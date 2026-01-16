@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - Your News Digest</title>
+    <!--[if mso]>
+    <style type="text/css">
+        body, table, td {font-family: Calibri, Arial, sans-serif !important;}
+    </style>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
+        <tr>
+            <td align="center" style="padding: 20px 10px;">
+                <!-- Main Container -->
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; max-width: 600px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 30px 40px 20px 40px; border-bottom: 2px solid #0066cc;">
+                            <h1 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
+                                {{ app_name }}
+                            </h1>
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
+                                {{ digest_date.strftime('%A, %B %d, %Y') }}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="padding: 30px 40px 20px 40px;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
+                                Hi {{ user_name }},
+                            </p>
+                            <p style="margin: 15px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
+                                Here's your personalized news digest with <strong>{{ total_articles }} articles</strong> across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Topics -->
+                    {% for topic in topics %}
+                    <tr>
+                        <td style="padding: 10px 40px 30px 40px;">
+                            <!-- Topic Header -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0;">
+                                        <h2 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                                            {{ topic.name }}
+                                        </h2>
+                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #888888;">
+                                            {{ topic.articles|length }} article{% if topic.articles|length != 1 %}s{% endif %}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Articles -->
+                            {% for article in topic.articles %}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px;">
+                                <tr>
+                                    {% if article.image_url %}
+                                    <td width="120" valign="top" style="padding-right: 15px;">
+                                        <img src="{{ article.image_url }}" alt="" width="120" style="display: block; border-radius: 4px; max-width: 120px; height: auto;">
+                                    </td>
+                                    {% endif %}
+                                    <td valign="top">
+                                        <h3 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; font-weight: bold; color: #333333;">
+                                            <a href="{{ article.url }}" style="color: #0066cc; text-decoration: none;">
+                                                {{ article.title }}
+                                            </a>
+                                        </h3>
+                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #888888;">
+                                            {{ article.source_name }}{% if article.published_at %} &bull; {{ article.published_at.strftime('%b %d') }}{% endif %}
+                                        </p>
+                                        <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
+                                            {{ article.summary }}
+                                        </p>
+                                        <p style="margin: 10px 0 0 0;">
+                                            <a href="{{ article.url }}" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #0066cc; text-decoration: none;">
+                                                Read more &rarr;
+                                            </a>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- AI Attribution -->
+                    <tr>
+                        <td style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
+                                <strong>AI Model:</strong> Summaries generated by {{ ai_provider }} ({{ ai_model }})
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 25px 40px; background-color: #333333;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                                You're receiving this because you subscribed to {{ app_name }}.
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                                <a href="#" style="color: #ffffff; text-decoration: underline;">Manage preferences</a>
+                                &nbsp;&bull;&nbsp;
+                                <a href="#" style="color: #ffffff; text-decoration: underline;">Unsubscribe</a>
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
