@@ -1,0 +1,292 @@
+"""News fetching service using NewsAPI and RSS feeds."""
+
+import asyncio
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+import feedparser
+import httpx
+from bs4 import BeautifulSoup
+
+from src.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
+
+
+@dataclass
+class Article:
+    """Represents a news article."""
+
+    title: str
+    url: str
+    description: str | None
+    source_name: str | None
+    author: str | None
+    published_at: datetime | None
+    image_url: str | None
+
+    def __hash__(self) -> int:
+        return hash(self.url)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Article):
+            return False
+        return self.url == other.url
+
+
+class NewsService:
+    """Service for fetching news from multiple sources."""
+
+    NEWSAPI_BASE_URL = "https://newsapi.org/v2"
+
+    # Popular RSS feeds as fallback
+    RSS_FEEDS = {
+        "technology": [
+            "https://feeds.arstechnica.com/arstechnica/technology-lab",
+            "https://www.wired.com/feed/rss",
+            "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+        ],
+        "science": [
+            "https://www.sciencedaily.com/rss/all.xml",
+            "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        ],
+        "business": [
+            "https://feeds.bloomberg.com/markets/news.rss",
+            "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        ],
+        "health": [
+            "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        ],
+        "general": [
+            "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+            "https://feeds.bbci.co.uk/news/rss.xml",
+        ],
+    }
+
+    def __init__(self) -> None:
+        self.api_key = settings.newsapi_key
+        self.client = httpx.AsyncClient(
+            timeout=30.0,
+            follow_redirects=True,
+            headers={"User-Agent": "AI-News-Digest/1.0"},
+        )
+
+    async def close(self) -> None:
+        """Close the HTTP client."""
+        await self.client.aclose()
+
+    async def fetch_news_for_topic(
+        self,
+        keywords: list[str],
+        exclude_keywords: list[str] | None = None,
+        max_articles: int = 10,
+        days_back: int = 7,
+    ) -> list[Article]:
+        """
+        Fetch news articles for given keywords.
+
+        Uses NewsAPI if available, falls back to RSS feeds.
+        """
+        articles: list[Article] = []
+
+        # Try NewsAPI first
+        if self.api_key:
+            newsapi_articles = await self._fetch_from_newsapi(
+                keywords, exclude_keywords, max_articles, days_back
+            )
+            articles.extend(newsapi_articles)
+
+        # Supplement with RSS if needed
+        if len(articles) < max_articles:
+            remaining = max_articles - len(articles)
+            rss_articles = await self._fetch_from_rss(keywords, remaining)
+            articles.extend(rss_articles)
+
+        # Deduplicate by URL
+        seen_urls: set[str] = set()
+        unique_articles: list[Article] = []
+        for article in articles:
+            if article.url not in seen_urls:
+                seen_urls.add(article.url)
+                unique_articles.append(article)
+
+        return unique_articles[:max_articles]
+
+    async def _fetch_from_newsapi(
+        self,
+        keywords: list[str],
+        exclude_keywords: list[str] | None,
+        max_articles: int,
+        days_back: int,
+    ) -> list[Article]:
+        """Fetch articles from NewsAPI."""
+        articles: list[Article] = []
+
+        query = " OR ".join(keywords)
+        if exclude_keywords:
+            exclude_query = " ".join(f"-{kw}" for kw in exclude_keywords)
+            query = f"({query}) {exclude_query}"
+
+        from_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+
+        try:
+            response = await self.client.get(
+                f"{self.NEWSAPI_BASE_URL}/everything",
+                params={
+                    "q": query,
+                    "from": from_date,
+                    "sortBy": "relevancy",
+                    "pageSize": max_articles,
+                    "language": "en",
+                    "apiKey": self.api_key,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            for item in data.get("articles", []):
+                published_at = None
+                if item.get("publishedAt"):
+                    try:
+                        published_at = datetime.fromisoformat(
+                            item["publishedAt"].replace("Z", "+00:00")
+                        )
+                    except ValueError:
+                        pass
+
+                articles.append(
+                    Article(
+                        title=item.get("title", "Untitled"),
+                        url=item.get("url", ""),
+                        description=item.get("description"),
+                        source_name=item.get("source", {}).get("name"),
+                        author=item.get("author"),
+                        published_at=published_at,
+                        image_url=item.get("urlToImage"),
+                    )
+                )
+
+        except httpx.HTTPError as e:
+            logger.warning(f"NewsAPI request failed: {e}")
+        except Exception as e:
+            logger.error(f"Error fetching from NewsAPI: {e}")
+
+        return articles
+
+    async def _fetch_from_rss(
+        self,
+        keywords: list[str],
+        max_articles: int,
+    ) -> list[Article]:
+        """Fetch articles from RSS feeds."""
+        articles: list[Article] = []
+
+        # Get all RSS feeds
+        all_feeds: list[str] = []
+        for feeds in self.RSS_FEEDS.values():
+            all_feeds.extend(feeds)
+
+        # Fetch feeds concurrently
+        tasks = [self._parse_rss_feed(url) for url in all_feeds[:5]]  # Limit to 5 feeds
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, list):
+                articles.extend(result)
+
+        # Filter by keywords
+        keyword_set = {kw.lower() for kw in keywords}
+        filtered_articles = []
+        for article in articles:
+            text = f"{article.title} {article.description or ''}".lower()
+            if any(kw in text for kw in keyword_set):
+                filtered_articles.append(article)
+
+        return filtered_articles[:max_articles]
+
+    async def _parse_rss_feed(self, feed_url: str) -> list[Article]:
+        """Parse an RSS feed and return articles."""
+        articles: list[Article] = []
+
+        try:
+            response = await self.client.get(feed_url)
+            response.raise_for_status()
+
+            feed = feedparser.parse(response.text)
+
+            for entry in feed.entries[:10]:
+                published_at = None
+                if hasattr(entry, "published_parsed") and entry.published_parsed:
+                    try:
+                        published_at = datetime(*entry.published_parsed[:6])
+                    except (TypeError, ValueError):
+                        pass
+
+                # Extract image from media content or enclosure
+                image_url = None
+                if hasattr(entry, "media_content"):
+                    for media in entry.media_content:
+                        if media.get("type", "").startswith("image"):
+                            image_url = media.get("url")
+                            break
+                elif hasattr(entry, "enclosures"):
+                    for enc in entry.enclosures:
+                        if enc.get("type", "").startswith("image"):
+                            image_url = enc.get("href")
+                            break
+
+                articles.append(
+                    Article(
+                        title=entry.get("title", "Untitled"),
+                        url=entry.get("link", ""),
+                        description=self._clean_html(entry.get("summary", "")),
+                        source_name=feed.feed.get("title"),
+                        author=entry.get("author"),
+                        published_at=published_at,
+                        image_url=image_url,
+                    )
+                )
+
+        except Exception as e:
+            logger.warning(f"Failed to parse RSS feed {feed_url}: {e}")
+
+        return articles
+
+    def _clean_html(self, html: str) -> str:
+        """Remove HTML tags from text."""
+        if not html:
+            return ""
+        soup = BeautifulSoup(html, "lxml")
+        return soup.get_text(separator=" ", strip=True)
+
+    async def scrape_article_content(self, url: str) -> str | None:
+        """
+        Scrape the full article content from a URL.
+
+        This is optional and can be used to get more context for summarization.
+        """
+        try:
+            response = await self.client.get(url)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.text, "lxml")
+
+            # Remove unwanted elements
+            for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
+                element.decompose()
+
+            # Try to find the main article content
+            article = soup.find("article") or soup.find("main") or soup.find("body")
+
+            if article:
+                # Get text from paragraphs
+                paragraphs = article.find_all("p")
+                content = " ".join(p.get_text(strip=True) for p in paragraphs)
+                return content[:5000]  # Limit content length
+
+        except Exception as e:
+            logger.warning(f"Failed to scrape article {url}: {e}")
+
+        return None
