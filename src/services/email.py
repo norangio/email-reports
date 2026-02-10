@@ -2,13 +2,15 @@
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import resend
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from src.core.config import get_settings
+from src.services.news import Article
+from src.services.summarizer import SummaryResult
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -22,23 +24,11 @@ jinja_env = Environment(
 
 
 @dataclass
-class ArticleSummary:
-    """Article data for email template."""
-
-    title: str
-    url: str
-    source_name: str
-    summary: str
-    image_url: str | None = None
-    published_at: datetime | None = None
-
-
-@dataclass
-class TopicDigest:
-    """Topic data for email template."""
+class TopicArticles:
+    """A topic name paired with its articles and summaries for rendering."""
 
     name: str
-    articles: list[ArticleSummary]
+    items: list[tuple[Article, SummaryResult]]
 
 
 @dataclass
@@ -61,7 +51,7 @@ class EmailService:
     def render_digest_email(
         self,
         user_name: str | None,
-        topics: list[TopicDigest],
+        topics: list[TopicArticles],
         ai_provider: str,
         ai_model: str,
         digest_date: datetime | None = None,
@@ -71,7 +61,7 @@ class EmailService:
 
         Args:
             user_name: User's name for greeting.
-            topics: List of topics with their article summaries.
+            topics: List of TopicArticles with article/summary pairs.
             ai_provider: Name of the AI provider used.
             ai_model: Name of the AI model used.
             digest_date: Date of the digest (defaults to now).
@@ -80,34 +70,43 @@ class EmailService:
             EmailContent with subject and rendered bodies.
         """
         if digest_date is None:
-            digest_date = datetime.utcnow()
+            digest_date = datetime.now(timezone.utc)
 
-        # Calculate total articles
-        total_articles = sum(len(t.articles) for t in topics)
+        # Build template-friendly structure
+        template_topics = []
+        total_articles = 0
+        for topic in topics:
+            articles = [
+                {
+                    "title": article.title,
+                    "url": article.url,
+                    "source_name": article.source_name or "Unknown",
+                    "summary": summary.summary,
+                    "image_url": article.image_url,
+                    "published_at": article.published_at,
+                }
+                for article, summary in topic.items
+            ]
+            total_articles += len(articles)
+            template_topics.append({"name": topic.name, "articles": articles})
+
+        template_vars = {
+            "user_name": user_name or "there",
+            "topics": template_topics,
+            "ai_provider": ai_provider,
+            "ai_model": ai_model,
+            "digest_date": digest_date,
+            "total_articles": total_articles,
+            "app_name": settings.app_name,
+        }
 
         # Render HTML template
         template = jinja_env.get_template("digest_email.html")
-        html_body = template.render(
-            user_name=user_name or "there",
-            topics=topics,
-            ai_provider=ai_provider,
-            ai_model=ai_model,
-            digest_date=digest_date,
-            total_articles=total_articles,
-            app_name=settings.app_name,
-        )
+        html_body = template.render(**template_vars)
 
         # Render plain text template
         text_template = jinja_env.get_template("digest_email.txt")
-        text_body = text_template.render(
-            user_name=user_name or "there",
-            topics=topics,
-            ai_provider=ai_provider,
-            ai_model=ai_model,
-            digest_date=digest_date,
-            total_articles=total_articles,
-            app_name=settings.app_name,
-        )
+        text_body = text_template.render(**template_vars)
 
         # Create subject
         topic_names = [t.name for t in topics[:3]]

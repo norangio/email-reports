@@ -1,17 +1,10 @@
 """Pydantic schemas for API requests and responses."""
 
 from datetime import datetime
-from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
 
-
-# Enums
-class DigestFrequency(str, Enum):
-    DAILY = "daily"
-    WEEKLY = "weekly"
-    TWICE_WEEKLY = "twice_weekly"
-    MONTHLY = "monthly"
+from src.core.config import DigestFrequency
 
 
 # Auth schemas
@@ -36,7 +29,6 @@ class UserResponse(BaseModel):
     email: str
     full_name: str | None
     is_active: bool
-    is_verified: bool
     digest_frequency: str
     digest_hour: int
     digest_minute: int

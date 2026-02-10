@@ -1,9 +1,9 @@
 """Digest and article models for tracking sent digests."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
@@ -42,7 +42,7 @@ class Digest(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
 
@@ -93,9 +93,6 @@ class DigestArticle(Base):
 
     # Optional image
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # Relevance score (0-1)
-    relevance_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Relationships
     digest: Mapped["Digest"] = relationship("Digest", back_populates="articles")

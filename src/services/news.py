@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import feedparser
 import httpx
@@ -42,28 +42,18 @@ class NewsService:
     NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 
     # Popular RSS feeds as fallback
-    RSS_FEEDS = {
-        "technology": [
-            "https://feeds.arstechnica.com/arstechnica/technology-lab",
-            "https://www.wired.com/feed/rss",
-            "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
-        ],
-        "science": [
-            "https://www.sciencedaily.com/rss/all.xml",
-            "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
-        ],
-        "business": [
-            "https://feeds.bloomberg.com/markets/news.rss",
-            "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
-        ],
-        "health": [
-            "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
-        ],
-        "general": [
-            "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
-            "https://feeds.bbci.co.uk/news/rss.xml",
-        ],
-    }
+    RSS_FEEDS = [
+        "https://feeds.arstechnica.com/arstechnica/technology-lab",
+        "https://www.wired.com/feed/rss",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+        "https://www.sciencedaily.com/rss/all.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        "https://feeds.bloomberg.com/markets/news.rss",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+        "https://feeds.bbci.co.uk/news/rss.xml",
+    ]
 
     def __init__(self) -> None:
         self.api_key = settings.newsapi_key
@@ -129,7 +119,7 @@ class NewsService:
             exclude_query = " ".join(f"-{kw}" for kw in exclude_keywords)
             query = f"({query}) {exclude_query}"
 
-        from_date = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+        from_date = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y-%m-%d")
 
         try:
             response = await self.client.get(
@@ -183,13 +173,8 @@ class NewsService:
         """Fetch articles from RSS feeds."""
         articles: list[Article] = []
 
-        # Get all RSS feeds
-        all_feeds: list[str] = []
-        for feeds in self.RSS_FEEDS.values():
-            all_feeds.extend(feeds)
-
         # Fetch feeds concurrently
-        tasks = [self._parse_rss_feed(url) for url in all_feeds[:5]]  # Limit to 5 feeds
+        tasks = [self._parse_rss_feed(url) for url in self.RSS_FEEDS[:5]]  # Limit to 5 feeds
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
@@ -258,35 +243,6 @@ class NewsService:
         """Remove HTML tags from text."""
         if not html:
             return ""
-        soup = BeautifulSoup(html, "lxml")
+        soup = BeautifulSoup(html, "html.parser")
         return soup.get_text(separator=" ", strip=True)
 
-    async def scrape_article_content(self, url: str) -> str | None:
-        """
-        Scrape the full article content from a URL.
-
-        This is optional and can be used to get more context for summarization.
-        """
-        try:
-            response = await self.client.get(url)
-            response.raise_for_status()
-
-            soup = BeautifulSoup(response.text, "lxml")
-
-            # Remove unwanted elements
-            for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
-                element.decompose()
-
-            # Try to find the main article content
-            article = soup.find("article") or soup.find("main") or soup.find("body")
-
-            if article:
-                # Get text from paragraphs
-                paragraphs = article.find_all("p")
-                content = " ".join(p.get_text(strip=True) for p in paragraphs)
-                return content[:5000]  # Limit content length
-
-        except Exception as e:
-            logger.warning(f"Failed to scrape article {url}: {e}")
-
-        return None

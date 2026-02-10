@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -165,9 +165,9 @@ async def create_topic(
     """Create a new topic."""
     # Check topic limit
     result = await db.execute(
-        select(Topic).where(Topic.user_id == current_user.id)
+        select(func.count(Topic.id)).where(Topic.user_id == current_user.id)
     )
-    existing_count = len(result.scalars().all())
+    existing_count = result.scalar_one()
 
     if existing_count >= settings.max_topics_per_user:
         raise HTTPException(

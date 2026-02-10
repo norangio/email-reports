@@ -1,7 +1,7 @@
 """Digest orchestration service."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,7 @@ from src.core.config import get_settings
 from src.models.digest import Digest, DigestArticle
 from src.models.topic import Topic
 from src.models.user import User
-from src.services.email import ArticleSummary, EmailService, TopicDigest
+from src.services.email import EmailService, TopicArticles
 from src.services.news import NewsService
 from src.services.summarizer import SummarizerService
 
@@ -68,8 +68,8 @@ class DigestService:
         ai_provider, ai_model = self.summarizer.get_model_info()
 
         # Process each topic
-        topic_digests: list[TopicDigest] = []
-        all_articles: list[tuple[Topic, DigestArticle]] = []
+        topic_articles_list: list[TopicArticles] = []
+        all_digest_articles: list[tuple[Topic, DigestArticle]] = []
 
         for topic in topics:
             try:
@@ -94,20 +94,11 @@ class DigestService:
                     topic_keywords=keywords,
                 )
 
-                # Build article summaries for email
-                article_summaries: list[ArticleSummary] = []
+                # Build pairs for email and DB records
+                pairs: list[tuple] = []
                 for article, summary in zip(articles, summaries):
-                    article_summary = ArticleSummary(
-                        title=article.title,
-                        url=article.url,
-                        source_name=article.source_name or "Unknown",
-                        summary=summary.summary,
-                        image_url=article.image_url,
-                        published_at=article.published_at,
-                    )
-                    article_summaries.append(article_summary)
+                    pairs.append((article, summary))
 
-                    # Create digest article record
                     digest_article = DigestArticle(
                         topic_id=topic.id,
                         title=article.title,
@@ -119,25 +110,25 @@ class DigestService:
                         ai_summary=summary.summary,
                         image_url=article.image_url,
                     )
-                    all_articles.append((topic, digest_article))
+                    all_digest_articles.append((topic, digest_article))
 
-                if article_summaries:
-                    topic_digests.append(
-                        TopicDigest(name=topic.name, articles=article_summaries)
+                if pairs:
+                    topic_articles_list.append(
+                        TopicArticles(name=topic.name, items=pairs)
                     )
 
             except Exception as e:
                 logger.error(f"Error processing topic '{topic.name}': {e}")
                 continue
 
-        if not topic_digests:
+        if not topic_articles_list:
             logger.warning(f"No content generated for user {user.email}")
             return None
 
         # Render and send email
         email_content = self.email_service.render_digest_email(
             user_name=user.full_name,
-            topics=topic_digests,
+            topics=topic_articles_list,
             ai_provider=ai_provider,
             ai_model=ai_model,
         )
@@ -156,7 +147,7 @@ class DigestService:
             user_id=user.id,
             ai_provider=ai_provider,
             ai_model=ai_model,
-            email_sent_at=datetime.utcnow(),
+            email_sent_at=datetime.now(timezone.utc),
             email_subject=email_content.subject,
             email_id=email_id,
         )
@@ -164,19 +155,19 @@ class DigestService:
         await db.flush()  # Get the digest ID
 
         # Associate articles with digest
-        for _, article in all_articles:
+        for _, article in all_digest_articles:
             article.digest_id = digest.id
             db.add(article)
 
         # Update user's last digest time
-        user.last_digest_sent_at = datetime.utcnow()
+        user.last_digest_sent_at = datetime.now(timezone.utc)
         db.add(user)
 
         await db.commit()
 
         logger.info(
-            f"Digest sent to {user.email}: {len(all_articles)} articles, "
-            f"{len(topic_digests)} topics"
+            f"Digest sent to {user.email}: {len(all_digest_articles)} articles, "
+            f"{len(topic_articles_list)} topics"
         )
 
         return digest
@@ -199,7 +190,6 @@ class DigestService:
             .options(selectinload(User.topics))
             .where(
                 User.is_active == True,
-                User.is_verified == True,
                 User.digest_enabled == True,
             )
         )
@@ -219,7 +209,7 @@ class DigestService:
 
     def _should_send_digest(self, user: User) -> bool:
         """Check if a user should receive a digest now."""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # Check if it's the right time
         if now.hour != user.digest_hour:

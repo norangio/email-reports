@@ -2,7 +2,6 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Protocol
 
 import anthropic
 import openai
@@ -21,19 +20,30 @@ class SummaryResult:
     summary: str
     provider: str
     model: str
-    relevance_score: float | None = None
 
 
-class AIClient(Protocol):
-    """Protocol for AI client implementations."""
+def _build_prompt(article: Article, topic_context: str) -> str:
+    """Build the summarization prompt."""
+    content_parts = [
+        f"Title: {article.title}",
+        f"Source: {article.source_name or 'Unknown'}",
+    ]
 
-    async def summarize(self, article: Article, topic_context: str) -> SummaryResult:
-        """Summarize an article."""
-        ...
+    if article.description:
+        content_parts.append(f"Description: {article.description}")
 
-    def get_model_info(self) -> tuple[str, str]:
-        """Return (provider, model) tuple."""
-        ...
+    if article.published_at:
+        content_parts.append(f"Published: {article.published_at.strftime('%Y-%m-%d')}")
+
+    content = "\n".join(content_parts)
+
+    return f"""Please summarize this news article in 1-2 detailed paragraphs.
+The reader is interested in: {topic_context}
+
+Article:
+{content}
+
+Provide a thorough, factual summary that covers the key points, context, and why it matters. Write in a clear, journalistic tone."""
 
 
 class AnthropicClient:
@@ -48,7 +58,7 @@ class AnthropicClient:
 
     async def summarize(self, article: Article, topic_context: str) -> SummaryResult:
         """Summarize an article using Claude."""
-        prompt = self._build_prompt(article, topic_context)
+        prompt = _build_prompt(article, topic_context)
 
         try:
             response = await self.client.messages.create(
@@ -74,29 +84,6 @@ class AnthropicClient:
             logger.error(f"Anthropic API error: {e}")
             raise
 
-    def _build_prompt(self, article: Article, topic_context: str) -> str:
-        """Build the summarization prompt."""
-        content_parts = [
-            f"Title: {article.title}",
-            f"Source: {article.source_name or 'Unknown'}",
-        ]
-
-        if article.description:
-            content_parts.append(f"Description: {article.description}")
-
-        if article.published_at:
-            content_parts.append(f"Published: {article.published_at.strftime('%Y-%m-%d')}")
-
-        content = "\n".join(content_parts)
-
-        return f"""Please summarize this news article in 2-3 concise sentences.
-The reader is interested in: {topic_context}
-
-Article:
-{content}
-
-Provide a clear, factual summary focusing on the most important information."""
-
 
 class OpenAIClient:
     """OpenAI GPT client for summarization."""
@@ -110,7 +97,7 @@ class OpenAIClient:
 
     async def summarize(self, article: Article, topic_context: str) -> SummaryResult:
         """Summarize an article using GPT."""
-        prompt = self._build_prompt(article, topic_context)
+        prompt = _build_prompt(article, topic_context)
 
         try:
             response = await self.client.chat.completions.create(
@@ -142,29 +129,6 @@ class OpenAIClient:
             logger.error(f"OpenAI API error: {e}")
             raise
 
-    def _build_prompt(self, article: Article, topic_context: str) -> str:
-        """Build the summarization prompt."""
-        content_parts = [
-            f"Title: {article.title}",
-            f"Source: {article.source_name or 'Unknown'}",
-        ]
-
-        if article.description:
-            content_parts.append(f"Description: {article.description}")
-
-        if article.published_at:
-            content_parts.append(f"Published: {article.published_at.strftime('%Y-%m-%d')}")
-
-        content = "\n".join(content_parts)
-
-        return f"""Please summarize this news article in 2-3 concise sentences.
-The reader is interested in: {topic_context}
-
-Article:
-{content}
-
-Provide a clear, factual summary focusing on the most important information."""
-
 
 class SummarizerService:
     """
@@ -183,7 +147,7 @@ class SummarizerService:
         self.provider = provider or settings.ai_provider
         self.client = self._create_client()
 
-    def _create_client(self) -> AIClient:
+    def _create_client(self) -> AnthropicClient | OpenAIClient:
         """Create the appropriate AI client."""
         if self.provider == AIProvider.ANTHROPIC:
             if not settings.anthropic_api_key:
