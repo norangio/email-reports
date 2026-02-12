@@ -55,6 +55,7 @@ class EmailService:
         ai_provider: str,
         ai_model: str,
         digest_date: datetime | None = None,
+        overview: str | None = None,
     ) -> EmailContent:
         """
         Render the digest email using the HTML template.
@@ -98,6 +99,7 @@ class EmailService:
             "digest_date": digest_date,
             "total_articles": total_articles,
             "app_name": settings.app_name,
+            "overview": overview,
         }
 
         # Render HTML template

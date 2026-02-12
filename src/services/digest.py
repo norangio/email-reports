@@ -125,12 +125,20 @@ class DigestService:
             logger.warning(f"No content generated for user {user.email}")
             return None
 
+        # Generate witty overview from headlines
+        topic_headlines = [
+            (ta.name, [a.title for a, _ in ta.items])
+            for ta in topic_articles_list
+        ]
+        overview = await self.summarizer.generate_overview(topic_headlines)
+
         # Render and send email
         email_content = self.email_service.render_digest_email(
             user_name=user.full_name,
             topics=topic_articles_list,
             ai_provider=ai_provider,
             ai_model=ai_model,
+            overview=overview,
         )
 
         email_id = await self.email_service.send_digest(

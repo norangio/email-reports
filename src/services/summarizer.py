@@ -37,13 +37,12 @@ def _build_prompt(article: Article, topic_context: str) -> str:
 
     content = "\n".join(content_parts)
 
-    return f"""Please summarize this news article in 1-2 detailed paragraphs.
-The reader is interested in: {topic_context}
+    return f"""You are writing summaries for a daily email news digest. The reader is interested in: {topic_context}
+
+Summarize the following article in one or two short paragraphs based on whatever information is provided (title, description, source). Focus on the key facts and takeaways. Write in a clear, direct tone as if briefing someone over coffee. Never refuse to summarize — always produce a summary from the available information. Do not comment on the quality of the article, mention missing information, or add any meta-commentary.
 
 Article:
-{content}
-
-Provide a thorough, factual summary that covers the key points, context, and why it matters. Write in a clear, journalistic tone."""
+{content}"""
 
 
 class AnthropicClient:
@@ -66,9 +65,8 @@ class AnthropicClient:
                 max_tokens=settings.summary_max_length * 2,
                 messages=[{"role": "user", "content": prompt}],
                 system=(
-                    "You are a professional news summarizer. Create concise, informative "
-                    "summaries that capture the key points. Focus on facts and avoid "
-                    "sensationalism. Write in a neutral, journalistic tone."
+                    "You summarize news articles for a daily email digest. "
+                    "Be direct and factual. Never comment on the article itself or mention missing details."
                 ),
             )
 
@@ -83,6 +81,16 @@ class AnthropicClient:
         except anthropic.APIError as e:
             logger.error(f"Anthropic API error: {e}")
             raise
+
+    async def complete(self, system: str, prompt: str, max_tokens: int) -> str:
+        """Raw completion call."""
+        response = await self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+            system=system,
+        )
+        return response.content[0].text.strip()
 
 
 class OpenAIClient:
@@ -128,6 +136,18 @@ class OpenAIClient:
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
             raise
+
+    async def complete(self, system: str, prompt: str, max_tokens: int) -> str:
+        """Raw completion call."""
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return (response.choices[0].message.content or "").strip()
 
 
 class SummarizerService:
@@ -203,17 +223,79 @@ class SummarizerService:
         """
         results = []
         for article in articles:
-            try:
-                result = await self.summarize_article(article, topic_name, topic_keywords)
-                results.append(result)
-            except Exception as e:
-                logger.error(f"Failed to summarize article '{article.title}': {e}")
-                # Create a fallback summary
+            if not article.description:
+                logger.info(f"Skipping AI for '{article.title}' — no description available")
                 results.append(
                     SummaryResult(
-                        summary=article.description or article.title,
+                        summary=article.title,
+                        provider="Fallback",
+                        model="none",
+                    )
+                )
+                continue
+            try:
+                result = await self.summarize_article(article, topic_name, topic_keywords)
+                logger.info(
+                    f"AI summary for '{article.title}': {len(result.summary)} chars "
+                    f"(provider={result.provider})"
+                )
+                results.append(result)
+            except Exception as e:
+                logger.error(
+                    f"Failed to summarize article '{article.title}': "
+                    f"{type(e).__name__}: {e}"
+                )
+                fallback_text = article.description or article.title
+                logger.warning(
+                    f"Using fallback summary for '{article.title}' "
+                    f"({len(fallback_text)} chars)"
+                )
+                results.append(
+                    SummaryResult(
+                        summary=fallback_text,
                         provider="Fallback",
                         model="none",
                     )
                 )
         return results
+
+    async def generate_overview(
+        self,
+        topic_headlines: list[tuple[str, list[str]]],
+    ) -> str | None:
+        """
+        Generate a witty overview paragraph from all article headlines.
+
+        Args:
+            topic_headlines: List of (topic_name, [article_titles]) pairs.
+
+        Returns:
+            Overview text or None if generation fails.
+        """
+        bullet_points = []
+        for topic_name, titles in topic_headlines:
+            bullet_points.append(f"{topic_name}:")
+            for title in titles:
+                bullet_points.append(f"  - {title}")
+
+        headlines_text = "\n".join(bullet_points)
+
+        prompt = f"""Here are today's news headlines organized by topic:
+
+{headlines_text}
+
+Write a short, punchy overview paragraph (3-5 sentences) highlighting the most interesting or important stories across all topics. Be witty, dry, and occasionally sarcastic — like a smart friend giving you the morning briefing. Don't use bullet points, just flowing prose. Don't start with "Well" or "So" or "Alright"."""
+
+        system = (
+            "You write the opening paragraph for a daily news digest email. "
+            "Your tone is humorous, dry, and slightly sarcastic — but always informative. "
+            "Keep it concise."
+        )
+
+        try:
+            overview = await self.client.complete(system, prompt, max_tokens=500)
+            logger.info(f"Generated overview: {len(overview)} chars")
+            return overview
+        except Exception as e:
+            logger.error(f"Failed to generate overview: {type(e).__name__}: {e}")
+            return None

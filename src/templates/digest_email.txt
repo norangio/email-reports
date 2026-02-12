@@ -5,6 +5,10 @@
 Hi {{ user_name }},
 
 Here's your personalized news digest with {{ total_articles }} articles across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}.
+{% if overview %}
+
+{{ overview }}
+{% endif %}
 
 {% for topic in topics %}
 ------------------------------------------------------------

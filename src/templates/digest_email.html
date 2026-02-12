@@ -38,6 +38,11 @@
                             <p style="margin: 15px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
                                 Here's your personalized news digest with <strong>{{ total_articles }} articles</strong> across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}.
                             </p>
+                            {% if overview %}
+                            <p style="margin: 15px 0 0 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
+                                {{ overview }}
+                            </p>
+                            {% endif %}
                         </td>
                     </tr>
 
