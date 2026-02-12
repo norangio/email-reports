@@ -1,10 +1,8 @@
-{{ app_name }}
+Nick's Morning Brief
 {{ digest_date.strftime('%A, %B %d, %Y') }}
 ============================================================
 
-Hi {{ user_name }},
-
-Here's your personalized news digest with {{ total_articles }} articles across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}.
+Nick — here's what's going on. {{ total_articles }} stories across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %} today.
 {% if overview %}
 
 {{ overview }}

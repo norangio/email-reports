@@ -111,10 +111,7 @@ class EmailService:
         text_body = text_template.render(**template_vars)
 
         # Create subject
-        topic_names = [t.name for t in topics[:3]]
-        subject = f"Your News Digest: {', '.join(topic_names)}"
-        if len(topics) > 3:
-            subject += f" +{len(topics) - 3} more"
+        subject = f"Morning Brief — {digest_date.strftime('%b %d, %Y')}"
 
         return EmailContent(
             subject=subject,

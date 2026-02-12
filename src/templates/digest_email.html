@@ -21,7 +21,7 @@
                     <tr>
                         <td style="padding: 30px 40px 20px 40px; border-bottom: 2px solid #0066cc;">
                             <h1 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
-                                {{ app_name }}
+                                Nick's Morning Brief
                             </h1>
                             <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
                                 {{ digest_date.strftime('%A, %B %d, %Y') }}
@@ -33,10 +33,7 @@
                     <tr>
                         <td style="padding: 30px 40px 20px 40px;">
                             <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
-                                Hi {{ user_name }},
-                            </p>
-                            <p style="margin: 15px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
-                                Here's your personalized news digest with <strong>{{ total_articles }} articles</strong> across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %}.
+                                Nick — here's what's going on. <strong>{{ total_articles }} stories</strong> across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %} today.
                             </p>
                             {% if overview %}
                             <p style="margin: 15px 0 0 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
