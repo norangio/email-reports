@@ -319,10 +319,11 @@ class SummarizerService:
 Write 3-5 paragraphs synthesizing the key developments and news from these sources. Rules:
 - Reference sources inline as [1], [2], etc.
 - Do NOT summarize each source individually — connect the dots, find themes, and tell a coherent story
-- Every factual claim must cite at least one source
+- Cite each source once when it first provides a key fact — don't repeat the same citation multiple sentences in a row. One cite per claim is enough.
 - Write in a clear, direct, informative tone — like a well-written newsletter
 - If SEC filings are included, weave the notable ones into the narrative naturally
-- Do not start with "This week" or "In this week's" — vary your openings"""
+- Do not start with "This week" or "In this week's" — vary your openings
+- Do NOT include any headers, titles, or markdown formatting (no #, ##, **, etc.) — just plain prose paragraphs"""
 
         system = (
             "You write sections for a daily news digest email. "
@@ -383,12 +384,20 @@ Write 3-5 paragraphs synthesizing the key developments and news from these sourc
 
 {context_text}
 
-Write a short, punchy overview paragraph (3-5 sentences) highlighting the most interesting or important stories across all topics. Be witty, dry, and occasionally sarcastic — like a smart friend giving you the morning briefing. Don't use bullet points, just flowing prose. Don't start with "Well" or "So" or "Alright"."""
+Pick the 3-4 most important or actionable items from today's news and write a short highlight for each (1 sentence each). Prioritize:
+1. Biotech/pharma news that affects the CGT manufacturing or CDMO landscape
+2. AI developments relevant to biotech or manufacturing applications
+3. San Diego biotech news (new facilities, jobs, companies moving in)
+4. Asia/SE Asia biotech or pharma manufacturing opportunities
+5. Then anything else truly notable
+
+Format as a short punchy list — each item on its own line with a dash. Be witty, dry, and occasionally sarcastic but make every word count. Don't start with "Here's" or "Today's" — just dive into the highlights. No more than 4 items."""
 
         system = (
-            "You write the opening paragraph for a daily news digest email. "
-            "Your tone is humorous, dry, and slightly sarcastic — but always informative. "
-            "Keep it concise."
+            "You write the opening highlights for a daily news digest email. "
+            "The reader works at the intersection of AI/ML and biotech manufacturing. "
+            "Your tone is witty and dry — but every item must be genuinely useful. "
+            "Keep it tight."
         )
 
         try:

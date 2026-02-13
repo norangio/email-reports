@@ -66,10 +66,6 @@ class NewsService:
             "https://www.statnews.com/feed/",
             "https://www.genengnews.com/feed/",
         ],
-        "Asia & SE Asia": [
-            "https://www.fiercebiotech.com/rss/xml",
-            "https://www.fiercepharma.com/rss/xml",
-        ],
     }
 
     def __init__(self) -> None:
@@ -283,7 +279,7 @@ class NewsService:
 
                 articles.append(
                     Article(
-                        title=entry.get("title", "Untitled"),
+                        title=self._clean_html(entry.get("title", "Untitled")),
                         url=entry.get("link", ""),
                         description=self._clean_html(entry.get("summary", "")),
                         source_name=feed.feed.get("title"),
