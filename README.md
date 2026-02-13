@@ -1,24 +1,26 @@
 # Nick's Morning Brief
 
-A personalized daily news digest delivered to your inbox at 8am, powered by AI summarization. Articles are fetched from NewsAPI and RSS feeds, summarized by Claude (Anthropic), and sent via Resend — all orchestrated by a GitHub Actions cron job.
+A personalized daily news digest delivered to your inbox at 8am, powered by AI synthesis. Articles are fetched from NewsAPI and curated RSS feeds, scraped for full content, synthesized into flowing prose by Claude, and sent via Resend — all orchestrated by a GitHub Actions cron job.
 
 ## How It Works
 
-1. **Fetch** — NewsAPI + RSS feeds pull articles for each topic based on keywords
-2. **Summarize** — Claude Sonnet 4.5 generates concise summaries for each article
-3. **Overview** — A witty, sarcastic overview paragraph is generated from all headlines
-4. **Send** — The digest email is composed and delivered via Resend
+1. **Fetch** — NewsAPI + topic-specific RSS feeds pull articles for each topic based on keywords
+2. **Scrape** — Article body text is extracted via trafilatura for richer AI context
+3. **Classify** — SEC filings are split into notable (woven into prose) vs routine (compact table)
+4. **Synthesize** — Claude Sonnet 4.5 generates 3-5 paragraphs of flowing prose per topic with inline `[N]` source citations (~7 AI calls total)
+5. **Overview** — A witty 3-4 item highlight reel is generated from the syntheses
+6. **Send** — The digest email is composed and delivered via Resend
 
 ## Current Topics
 
-| Topic | Keywords |
-|---|---|
-| Cell & Gene Therapy | CAR-T, gene therapy, CGT manufacturing, ADC manufacturing |
-| AI News | artificial intelligence, LLM, OpenAI, Anthropic |
-| NBA | NBA, basketball, playoffs, trades |
-| Formula 1 | F1, Grand Prix, FIA |
-| San Diego Local | San Diego, North County, Encinitas, Carlsbad, Oceanside |
-| Asia & SE Asia | Southeast Asia biotech, expat news, Singapore, pharma manufacturing |
+| Topic | Source Strategy | Keywords |
+|---|---|---|
+| Biotech & Pharma | Dedicated RSS (FierceBiotech, FiercePharma, STAT, GEN) | CAR-T, gene therapy, CGT manufacturing, ADC, CDMO |
+| AI News | NewsAPI + generic RSS | artificial intelligence, LLM, OpenAI, Anthropic |
+| NBA | NewsAPI + generic RSS | NBA, basketball, playoffs, trades |
+| Formula 1 | NewsAPI + generic RSS | F1, Grand Prix, FIA |
+| Asia & SE Asia | Cross-filtered RSS (regional + global biotech) | Samsung Biologics, Celltrion, WuXi, Singapore, NMPA |
+| San Diego Local | NewsAPI + generic RSS | San Diego, North County, Encinitas, Carlsbad |
 
 ## Setup
 
@@ -85,27 +87,31 @@ Go to **Actions > Daily Digest > Run workflow** to send a digest on demand.
 
 ```
 src/
-├── run_digest.py    # CLI entry point (GitHub Actions calls this)
-├── main.py          # FastAPI web app
-├── scheduler.py     # APScheduler (local server mode only)
+├── run_digest.py      # CLI entry point (GitHub Actions calls this)
+├── main.py            # FastAPI web app
+├── scheduler.py       # APScheduler (local server mode only)
 ├── core/
-│   ├── config.py    # Pydantic settings from .env
-│   └── database.py  # Async SQLAlchemy + SQLite
-├── models/          # User, Topic, Digest ORM models
+│   ├── config.py      # Pydantic settings from .env
+│   └── database.py    # Async SQLAlchemy + SQLite
+├── models/            # User, Topic, Digest ORM models
 ├── services/
-│   ├── news.py      # NewsAPI + RSS feed fetching
-│   ├── summarizer.py # AI summarization + overview generation
-│   ├── email.py     # Resend email delivery
-│   └── digest.py    # Orchestration (fetch → summarize → send)
-└── templates/       # Jinja2 email templates (HTML + plaintext)
+│   ├── news.py        # NewsAPI + RSS feed fetching (topic-specific + cross-filtered)
+│   ├── scraper.py     # Article body text extraction via trafilatura
+│   ├── sec_filings.py # EDGAR filings: fetch, classify, scrape content
+│   ├── summarizer.py  # AI synthesis (per-topic prose + overview + filing summaries)
+│   ├── email.py       # Resend email delivery + template rendering
+│   └── digest.py      # Orchestration: fetch → scrape → classify → synthesize → render → send
+└── templates/
+    ├── brief_email.html  # Morning Brief HTML template (600px table, Calibri)
+    └── brief_email.txt   # Plain text fallback
 ```
 
-## Known Limitations & Next Steps
+## Email Format
 
-- **NewsAPI free tier** only returns articles 24h+ old and may miss niche topics — consider upgrading or adding specialized RSS feeds
-- **San Diego Local** topic relevance is loose — NewsAPI doesn't have great local news coverage
-- **Resend test address** (`onboarding@resend.dev`) can only send to the account owner — verify a custom domain for wider delivery
-- **Summary quality** can be further tuned via prompt engineering in `summarizer.py`
+- **Overview**: 3-4 curated highlight bullets (witty/dry tone), prioritizing biotech+AI, SD biotech, Asia opportunities
+- **Topic sections**: 3-5 paragraphs of synthesized prose per topic with superscript `[N]` citation links
+- **SEC filings**: Notable 8-K filings woven into Biotech & Pharma prose; routine filings in a compact table with AI-generated 1-sentence summaries
+- **Sources**: Numbered reference list at bottom with title, source, and link
 
 ## Configuration
 
@@ -115,9 +121,16 @@ All settings are in `.env`. Key variables:
 |---|---|---|
 | `AI_PROVIDER` | `anthropic` or `openai` | `anthropic` |
 | `ANTHROPIC_MODEL` | Claude model | `claude-sonnet-4-5-20250929` |
-| `MAX_ARTICLES_PER_TOPIC` | Articles per topic | `5` |
+| `MAX_ARTICLES_PER_TOPIC` | Articles per topic | `8` |
 | `SUMMARY_MAX_LENGTH` | Max summary tokens | `1000` |
 | `EMAIL_FROM_NAME` | Sender display name | `Nick's Morning Brief` |
+
+## Known Limitations
+
+- **NewsAPI free tier** only returns articles 24h+ old and may miss niche topics
+- **San Diego Local** topic relevance is loose — NewsAPI doesn't have great local news coverage
+- **Resend test address** (`onboarding@resend.dev`) can only send to the account owner — verify a custom domain for wider delivery
+- **Asia feeds** depend on a small number of working RSS sources — several tested feeds (BioSpectrum Asia, Korea Herald, FiercePharma Asia) were non-functional as of Feb 2026
 
 ## License
 
