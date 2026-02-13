@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - Morning Brief</title>
+    <!--[if mso]>
+    <style type="text/css">
+        body, table, td {font-family: Calibri, Arial, sans-serif !important;}
+    </style>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
+        <tr>
+            <td align="center" style="padding: 20px 10px;">
+                <!-- Main Container -->
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; max-width: 600px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 30px 40px 20px 40px; border-bottom: 2px solid #0066cc;">
+                            <h1 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
+                                Nick's Morning Brief
+                            </h1>
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
+                                {{ digest_date.strftime('%A, %B %d, %Y') }}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Overview -->
+                    {% if overview %}
+                    <tr>
+                        <td style="padding: 30px 40px 20px 40px;">
+                            <p style="margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
+                                {{ overview }}
+                            </p>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Topics -->
+                    {% for topic in topics %}
+                    <tr>
+                        <td style="padding: 10px 40px 30px 40px;">
+                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                                {{ topic.name }}
+                            </h2>
+                            {{ topic.prose_html | safe }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Routine SEC Filings -->
+                    {% if routine_filings %}
+                    <tr>
+                        <td style="padding: 10px 40px 30px 40px;">
+                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                                SEC Filings
+                            </h2>
+                            <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; border-collapse: collapse;">
+                                <tr style="background-color: #f8f9fa;">
+                                    <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Company</td>
+                                    <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Form</td>
+                                    <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Date</td>
+                                    <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Details</td>
+                                </tr>
+                                {% for filing in routine_filings %}
+                                <tr>
+                                    <td style="border-bottom: 1px solid #f0f0f0; color: #333333;">{{ filing.company }}</td>
+                                    <td style="border-bottom: 1px solid #f0f0f0;">
+                                        <a href="{{ filing.url }}" style="color: #0066cc; text-decoration: none;">{{ filing.form_type }}</a>
+                                    </td>
+                                    <td style="border-bottom: 1px solid #f0f0f0; color: #666666;">{{ filing.date }}</td>
+                                    <td style="border-bottom: 1px solid #f0f0f0; color: #666666;">{{ filing.description }}</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Sources -->
+                    {% if sources %}
+                    <tr>
+                        <td style="padding: 10px 40px 30px 40px;">
+                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                                Sources
+                            </h2>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt;">
+                                {% for source in sources %}
+                                <tr>
+                                    <td style="padding: 3px 0; color: #666666; line-height: 1.4;">
+                                        [{{ source.number }}] <a href="{{ source.url }}" style="color: #0066cc; text-decoration: none;">{{ source.title }}</a> &mdash; {{ source.source_name }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- AI Attribution -->
+                    <tr>
+                        <td style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
+                                <strong>AI Model:</strong> Synthesis by {{ ai_provider }} ({{ ai_model }})
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 25px 40px; background-color: #333333;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                                You're receiving this because you subscribed to {{ app_name }}.
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                                Reply to this email to manage your preferences or unsubscribe.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

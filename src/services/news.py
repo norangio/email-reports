@@ -27,6 +27,7 @@ class Article:
     author: str | None
     published_at: datetime | None
     image_url: str | None
+    body_text: str | None = None  # scraped article content
 
     def __hash__(self) -> int:
         return hash(self.url)

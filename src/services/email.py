@@ -32,6 +32,35 @@ class TopicArticles:
 
 
 @dataclass
+class TopicBrief:
+    """A topic with synthesized prose for the brief format."""
+
+    name: str
+    prose_html: str  # paragraphs with superscript <a> links
+
+
+@dataclass
+class SourceReference:
+    """A numbered source in the reference list."""
+
+    number: int
+    title: str
+    source_name: str
+    url: str
+
+
+@dataclass
+class RoutineFiling:
+    """A routine SEC filing for the compact table."""
+
+    company: str
+    form_type: str
+    date: str
+    url: str
+    description: str
+
+
+@dataclass
 class EmailContent:
     """Complete email content."""
 
@@ -118,6 +147,43 @@ class EmailService:
             html_body=html_body,
             text_body=text_body,
         )
+
+    def render_brief_email(
+        self,
+        user_name: str | None,
+        topics: list[TopicBrief],
+        sources: list[SourceReference],
+        ai_provider: str,
+        ai_model: str,
+        digest_date: datetime | None = None,
+        overview: str | None = None,
+        routine_filings: list[RoutineFiling] | None = None,
+    ) -> EmailContent:
+        """Render the brief-format digest email."""
+        if digest_date is None:
+            digest_date = datetime.now(timezone.utc)
+
+        template_vars = {
+            "user_name": user_name or "there",
+            "topics": topics,
+            "sources": sources,
+            "routine_filings": routine_filings or [],
+            "ai_provider": ai_provider,
+            "ai_model": ai_model,
+            "digest_date": digest_date,
+            "overview": overview,
+            "app_name": settings.app_name,
+        }
+
+        html_template = jinja_env.get_template("brief_email.html")
+        html_body = html_template.render(**template_vars)
+
+        text_template = jinja_env.get_template("brief_email.txt")
+        text_body = text_template.render(**template_vars)
+
+        subject = f"Morning Brief — {digest_date.strftime('%b %d, %Y')}"
+
+        return EmailContent(subject=subject, html_body=html_body, text_body=text_body)
 
     async def send_digest(
         self,

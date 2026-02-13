@@ -1,6 +1,7 @@
 """SEC EDGAR filings service for tracking biotech/CDMO company filings."""
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -71,6 +72,45 @@ TICKER_TO_CIK: dict[str, tuple[int, str]] = {
 
 # Form types to track
 TRACKED_FORMS = {"8-K", "8-K/A", "10-Q", "10-Q/A", "10-K", "10-K/A", "S-1", "S-1/A"}
+
+# 8-K item codes that indicate substantive, newsworthy events
+NOTABLE_8K_ITEMS = {
+    "1.01", "1.02", "1.03", "2.01", "2.02", "2.03", "2.04", "2.05", "2.06",
+    "3.01", "3.02", "3.03", "4.01", "4.02", "5.01", "5.02", "5.03",
+}
+
+
+@dataclass
+class ClassifiedFilings:
+    """SEC filings split into notable (woven into prose) and routine (compact table)."""
+
+    notable: list[Article] = field(default_factory=list)
+    routine: list[Article] = field(default_factory=list)
+
+
+def classify_filings(filings: list[Article]) -> ClassifiedFilings:
+    """Classify filings into notable (8-K with substantive items) and routine."""
+    result = ClassifiedFilings()
+    for filing in filings:
+        source = filing.source_name or ""
+        # Check if it's an 8-K by looking at the title
+        is_8k = "8-K" in filing.title
+        if is_8k:
+            # Extract item codes from the description
+            desc = filing.description or ""
+            item_codes = set()
+            for part in desc.split("Item "):
+                code = part.split(":")[0].strip().split(" ")[0]
+                if code and code[0].isdigit():
+                    item_codes.add(code)
+            if item_codes & NOTABLE_8K_ITEMS:
+                result.notable.append(filing)
+            else:
+                result.routine.append(filing)
+        else:
+            # 10-K, 10-Q, S-1 are always routine
+            result.routine.append(filing)
+    return result
 
 
 class SecFilingsService:

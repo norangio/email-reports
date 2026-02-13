@@ -22,6 +22,16 @@ class SummaryResult:
     model: str
 
 
+@dataclass
+class TopicSynthesis:
+    """Synthesized prose for a topic with inline [N] references."""
+
+    topic_name: str
+    prose: str  # paragraphs with [N] source references
+    provider: str
+    model: str
+
+
 def _build_prompt(article: Article, topic_context: str) -> str:
     """Build the summarization prompt."""
     content_parts = [
@@ -259,30 +269,119 @@ class SummarizerService:
                 )
         return results
 
-    async def generate_overview(
+    async def synthesize_topic(
         self,
-        topic_headlines: list[tuple[str, list[str]]],
-    ) -> str | None:
+        topic_name: str,
+        articles: list[Article],
+        notable_filings: list[Article] | None = None,
+    ) -> TopicSynthesis:
         """
-        Generate a witty overview paragraph from all article headlines.
+        Synthesize a topic into flowing prose with [N] source references.
 
         Args:
-            topic_headlines: List of (topic_name, [article_titles]) pairs.
+            topic_name: Name of the topic.
+            articles: Articles for this topic (with optional body_text).
+            notable_filings: Notable SEC filings to weave into the prose.
+
+        Returns:
+            TopicSynthesis with prose containing [N] references.
+        """
+        provider, model = self.client.get_model_info()
+
+        # Build numbered source list
+        source_lines = []
+        idx = 1
+        for article in articles:
+            content = article.body_text or article.description or article.title
+            source_lines.append(
+                f"[{idx}] {article.title}\n"
+                f"    Source: {article.source_name or 'Unknown'}\n"
+                f"    Content: {content}"
+            )
+            idx += 1
+
+        if notable_filings:
+            for filing in notable_filings:
+                content = filing.description or filing.title
+                source_lines.append(
+                    f"[{idx}] {filing.title}\n"
+                    f"    Source: {filing.source_name or 'SEC EDGAR'}\n"
+                    f"    Content: {content}"
+                )
+                idx += 1
+
+        sources_text = "\n\n".join(source_lines)
+
+        prompt = f"""Here are the sources for the "{topic_name}" section of a daily news brief:
+
+{sources_text}
+
+Write 3-5 paragraphs synthesizing the key developments and news from these sources. Rules:
+- Reference sources inline as [1], [2], etc.
+- Do NOT summarize each source individually — connect the dots, find themes, and tell a coherent story
+- Every factual claim must cite at least one source
+- Write in a clear, direct, informative tone — like a well-written newsletter
+- If SEC filings are included, weave the notable ones into the narrative naturally
+- Do not start with "This week" or "In this week's" — vary your openings"""
+
+        system = (
+            "You write sections for a daily news digest email. "
+            "Your writing is clear, direct, and informative. "
+            "You synthesize multiple sources into coherent narrative prose."
+        )
+
+        try:
+            prose = await self.client.complete(system, prompt, max_tokens=2000)
+            logger.info(
+                f"Synthesized topic '{topic_name}': {len(prose)} chars, "
+                f"{idx - 1} sources"
+            )
+            return TopicSynthesis(
+                topic_name=topic_name,
+                prose=prose,
+                provider=provider,
+                model=model,
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to synthesize topic '{topic_name}': "
+                f"{type(e).__name__}: {e}"
+            )
+            # Fallback: concatenate titles
+            fallback_lines = [f"- {a.title}" for a in articles]
+            if notable_filings:
+                fallback_lines.extend(f"- {f.title}" for f in notable_filings)
+            return TopicSynthesis(
+                topic_name=topic_name,
+                prose="\n".join(fallback_lines),
+                provider="Fallback",
+                model="none",
+            )
+
+    async def generate_overview(
+        self,
+        topic_syntheses: list[TopicSynthesis],
+    ) -> str | None:
+        """
+        Generate a witty overview paragraph from topic syntheses.
+
+        Args:
+            topic_syntheses: List of TopicSynthesis objects.
 
         Returns:
             Overview text or None if generation fails.
         """
-        bullet_points = []
-        for topic_name, titles in topic_headlines:
-            bullet_points.append(f"{topic_name}:")
-            for title in titles:
-                bullet_points.append(f"  - {title}")
+        summary_parts = []
+        for synthesis in topic_syntheses:
+            # Use first 500 chars of each synthesis for context
+            snippet = synthesis.prose[:500]
+            summary_parts.append(f"{synthesis.topic_name}:\n{snippet}")
 
-        headlines_text = "\n".join(bullet_points)
+        context_text = "\n\n".join(summary_parts)
 
-        prompt = f"""Here are today's news headlines organized by topic:
+        prompt = f"""Here are summaries of today's news topics:
 
-{headlines_text}
+{context_text}
 
 Write a short, punchy overview paragraph (3-5 sentences) highlighting the most interesting or important stories across all topics. Be witty, dry, and occasionally sarcastic — like a smart friend giving you the morning briefing. Don't use bullet points, just flowing prose. Don't start with "Well" or "So" or "Alright"."""
 

@@ -1,0 +1,42 @@
+Nick's Morning Brief
+{{ digest_date.strftime('%A, %B %d, %Y') }}
+============================================================
+{% if overview %}
+
+{{ overview }}
+{% endif %}
+
+{% for topic in topics %}
+------------------------------------------------------------
+{{ topic.name }}
+------------------------------------------------------------
+
+{{ topic.prose_html | striptags }}
+
+{% endfor %}
+{% if routine_filings %}
+------------------------------------------------------------
+SEC Filings
+------------------------------------------------------------
+
+{% for filing in routine_filings %}
+{{ filing.company }} | {{ filing.form_type }} | {{ filing.date }} | {{ filing.description }}
+  {{ filing.url }}
+{% endfor %}
+{% endif %}
+{% if sources %}
+------------------------------------------------------------
+Sources
+------------------------------------------------------------
+
+{% for source in sources %}
+[{{ source.number }}] {{ source.title }} — {{ source.source_name }}
+  {{ source.url }}
+{% endfor %}
+{% endif %}
+============================================================
+AI Model: Synthesis by {{ ai_provider }} ({{ ai_model }})
+============================================================
+
+You're receiving this because you subscribed to {{ app_name }}.
+Reply to this email to manage your preferences or unsubscribe.
