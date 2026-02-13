@@ -35,8 +35,8 @@ SEED_TOPICS = [
     {"name": "AI News", "keywords": "artificial intelligence,machine learning,LLM,OpenAI,Anthropic"},
     {"name": "NBA", "keywords": "NBA,basketball,NBA playoffs,NBA trade"},
     {"name": "Formula 1", "keywords": "Formula 1,F1,Grand Prix,FIA"},
+    {"name": "Asia & SE Asia", "keywords": "Samsung Biologics,Celltrion,WuXi,CDMO,Singapore,Korea,China,Japan,NMPA,BeiGene,Legend Biotech,Takeda,Daiichi Sankyo,Southeast Asia,biotech,pharma,biologics,drug approval,clinical trial,vaccine,biosimilar,manufacturing"},
     {"name": "San Diego Local", "keywords": "San Diego,North County San Diego,Encinitas,Carlsbad,Oceanside,Escondido,San Diego news,San Diego county"},
-    {"name": "Asia & SE Asia", "keywords": "Southeast Asia biotech,Asia biotech industry,Singapore biotech,expat Asia,expat Southeast Asia,Asia pharma manufacturing,Thailand expat,Vietnam biotech"},
 ]
 
 

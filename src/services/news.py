@@ -68,6 +68,32 @@ class NewsService:
         ],
     }
 
+    # Asia topic uses two feed groups with cross-filtering:
+    # - Asia-scoped feeds: filter for biotech/pharma terms
+    # - Global biotech feeds: filter for Asia geography terms
+    ASIA_TOPIC_NAME = "Asia & SE Asia"
+    ASIA_FEEDS_REGIONAL: list[str] = [
+        "https://www.asianscientist.com/feed/",        # Singapore-based, all Asia science
+    ]
+    ASIA_FEEDS_GLOBAL_BIOTECH: list[str] = [
+        "https://endpts.com/feed/",                    # Global biotech R&D
+        "https://www.fiercepharma.com/rss/xml",        # Global pharma
+        "https://www.fiercebiotech.com/rss/xml",       # Global biotech
+    ]
+    ASIA_BIO_KEYWORDS: list[str] = [
+        "biotech", "pharma", "drug", "clinical trial", "vaccine", "biosimilar",
+        "biologics", "manufacturing", "CDMO", "genomics", "CRISPR", "cell therapy",
+        "gene therapy", "antibody", "oncology", "FDA", "approval", "medicine",
+        "bioscience", "protein", "therapeutic", "diagnostic", "medical", "health",
+        "cancer", "disease", "biology", "science", "research", "laboratory",
+    ]
+    ASIA_GEO_KEYWORDS: list[str] = [
+        "China", "Japan", "Korea", "Singapore", "Asia", "Southeast Asia", "Taiwan",
+        "Takeda", "Daiichi Sankyo", "BeiGene", "WuXi", "Samsung Biologics",
+        "Celltrion", "Legend Biotech", "NMPA", "Lonza Singapore", "Zai Lab",
+        "Innovent", "Hengrui", "Hutchmed",
+    ]
+
     def __init__(self) -> None:
         self.api_key = settings.newsapi_key
         self.client = httpx.AsyncClient(
@@ -99,11 +125,38 @@ class NewsService:
         has_dedicated_feeds = topic_name and topic_name in self.TOPIC_RSS_FEEDS
 
         if has_dedicated_feeds:
-            # Topic-specific RSS feeds are the primary source
+            # Topic-specific RSS feeds are the primary source (no keyword filter)
             rss_articles = await self._fetch_from_rss(keywords, max_articles, topic_name)
             articles.extend(rss_articles)
 
             # Supplement with NewsAPI only if we still need more
+            if len(articles) < max_articles and self.api_key:
+                remaining = max_articles - len(articles)
+                newsapi_articles = await self._fetch_from_newsapi(
+                    keywords, exclude_keywords, remaining, days_back
+                )
+                articles.extend(newsapi_articles)
+        elif topic_name == self.ASIA_TOPIC_NAME:
+            # Asia topic: cross-filter two feed groups
+            # 1. Asia-scoped feeds → filter for biotech/pharma (permissive)
+            regional_tasks = [self._parse_rss_feed(url) for url in self.ASIA_FEEDS_REGIONAL]
+            regional_results = await asyncio.gather(*regional_tasks, return_exceptions=True)
+            regional_raw: list[Article] = []
+            for result in regional_results:
+                if isinstance(result, list):
+                    regional_raw.extend(result)
+            articles.extend(self._filter_by_keywords(regional_raw, self.ASIA_BIO_KEYWORDS))
+
+            # 2. Global biotech feeds → filter for Asia geography
+            global_tasks = [self._parse_rss_feed(url) for url in self.ASIA_FEEDS_GLOBAL_BIOTECH]
+            global_results = await asyncio.gather(*global_tasks, return_exceptions=True)
+            global_raw: list[Article] = []
+            for result in global_results:
+                if isinstance(result, list):
+                    global_raw.extend(result)
+            articles.extend(self._filter_by_keywords(global_raw, self.ASIA_GEO_KEYWORDS))
+
+            # Supplement with NewsAPI if we still need more
             if len(articles) < max_articles and self.api_key:
                 remaining = max_articles - len(articles)
                 newsapi_articles = await self._fetch_from_newsapi(
