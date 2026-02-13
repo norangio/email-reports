@@ -56,15 +56,14 @@ class NewsService:
         "https://feeds.bbci.co.uk/news/rss.xml",
     ]
 
-    # Topic-specific RSS feeds — used instead of generic feeds when available
+    # Topic-specific RSS feeds — used instead of generic feeds when available.
+    # Articles from these feeds skip keyword filtering (the feeds ARE the curation).
     TOPIC_RSS_FEEDS: dict[str, list[str]] = {
         "Cell & Gene Therapy": [
             "https://www.fiercebiotech.com/rss/xml",
             "https://www.fiercepharma.com/rss/xml",
             "https://www.statnews.com/feed/",
-            "https://www.biospace.com/rss/",
             "https://www.genengnews.com/feed/",
-            "https://www.biopharmadive.com/feeds/news/",
         ],
         "Asia & SE Asia": [
             "https://www.fiercebiotech.com/rss/xml",
@@ -144,15 +143,25 @@ class NewsService:
         max_articles: int,
         days_back: int,
     ) -> list[Article]:
-        """Fetch articles from NewsAPI."""
+        """Fetch articles from NewsAPI, then post-filter by keywords."""
         articles: list[Article] = []
 
-        query = " OR ".join(keywords)
+        # Quote multi-word keywords so NewsAPI treats them as phrases
+        quoted = []
+        for kw in keywords:
+            if " " in kw:
+                quoted.append(f'"{kw}"')
+            else:
+                quoted.append(kw)
+        query = " OR ".join(quoted)
         if exclude_keywords:
             exclude_query = " ".join(f"-{kw}" for kw in exclude_keywords)
             query = f"({query}) {exclude_query}"
 
         from_date = (datetime.now(timezone.utc) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+
+        # Request more than needed since we'll post-filter
+        fetch_size = min(max_articles * 3, 50)
 
         try:
             response = await self.client.get(
@@ -161,7 +170,7 @@ class NewsService:
                     "q": query,
                     "from": from_date,
                     "sortBy": "relevancy",
-                    "pageSize": max_articles,
+                    "pageSize": fetch_size,
                     "language": "en",
                     "apiKey": self.api_key,
                 },
@@ -196,7 +205,8 @@ class NewsService:
         except Exception as e:
             logger.error(f"Error fetching from NewsAPI: {e}")
 
-        return articles
+        # Post-filter: require at least one keyword match (word-boundary)
+        return self._filter_by_keywords(articles, keywords)[:max_articles]
 
     async def _fetch_from_rss(
         self,
@@ -206,6 +216,7 @@ class NewsService:
     ) -> list[Article]:
         """Fetch articles from RSS feeds."""
         articles: list[Article] = []
+        is_topic_specific = topic_name and topic_name in self.TOPIC_RSS_FEEDS
 
         # Use topic-specific feeds if available, otherwise generic
         feeds = self.TOPIC_RSS_FEEDS.get(topic_name, self.RSS_FEEDS[:5]) if topic_name else self.RSS_FEEDS[:5]
@@ -216,18 +227,27 @@ class NewsService:
             if isinstance(result, list):
                 articles.extend(result)
 
-        # Filter by keywords using word-boundary matching
+        if is_topic_specific:
+            # Topic-specific feeds are already curated — skip keyword filtering
+            return articles[:max_articles]
+
+        # Generic feeds: filter by keywords using word-boundary matching
+        return self._filter_by_keywords(articles, keywords)[:max_articles]
+
+    def _filter_by_keywords(
+        self, articles: list[Article], keywords: list[str]
+    ) -> list[Article]:
+        """Filter articles requiring at least one keyword match (word-boundary)."""
         keyword_patterns = [
             re.compile(r"\b" + re.escape(kw.lower()) + r"\b")
             for kw in keywords
         ]
-        filtered_articles = []
+        filtered = []
         for article in articles:
             text = f"{article.title} {article.description or ''}".lower()
             if any(pat.search(text) for pat in keyword_patterns):
-                filtered_articles.append(article)
-
-        return filtered_articles[:max_articles]
+                filtered.append(article)
+        return filtered
 
     async def _parse_rss_feed(self, feed_url: str) -> list[Article]:
         """Parse an RSS feed and return articles."""
