@@ -64,6 +64,35 @@ def _renumber_and_linkify(
     return "\n".join(styled_paragraphs)
 
 
+# Maps form types to concise table descriptions
+_FORM_SHORT_DESC: dict[str, str] = {
+    "10-K": "Full-year financials & business overview",
+    "10-K/A": "Amended annual report",
+    "10-Q": "Quarterly financial results",
+    "10-Q/A": "Amended quarterly report",
+    "S-1": "IPO/offering registration",
+    "S-1/A": "Amended registration statement",
+}
+
+
+def _extract_filing_detail(description: str, form_type: str) -> str:
+    """Extract a concise, substantive detail string for the filing table."""
+    # For 8-K: pull out item descriptions, skip boilerplate codes
+    if "8-K" in form_type:
+        # Extract "Item X.XX: Description" pairs, keep only the descriptions
+        items = re.findall(r"Item \d+\.\d+: ([^;.]+)", description)
+        # Filter out noise items
+        noise = {"Financial Statements and Exhibits", "Other Events"}
+        substantive = [item.strip() for item in items if item.strip() not in noise]
+        if substantive:
+            return "; ".join(substantive)
+        # All items were noise — return generic
+        return "Exhibits and other events"
+
+    # For 10-K, 10-Q, S-1 etc. — use short description
+    return _FORM_SHORT_DESC.get(form_type, form_type)
+
+
 class DigestService:
     """
     Orchestrates the digest generation and delivery process.
@@ -215,13 +244,15 @@ class DigestService:
                 date_str = ""
                 if filing.published_at:
                     date_str = filing.published_at.strftime("%b %d")
+                # Extract substantive description — strip boilerplate prefix
+                detail = _extract_filing_detail(filing.description or "", form_info.strip())
                 routine_filings.append(
                     RoutineFiling(
                         company=company,
                         form_type=form_info,
                         date=date_str,
                         url=filing.url,
-                        description=filing.description or "",
+                        description=detail,
                     )
                 )
 
