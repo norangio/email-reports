@@ -12,6 +12,42 @@ logger = logging.getLogger(__name__)
 # SEC requires a User-Agent with contact info
 SEC_USER_AGENT = "NicksMorningBrief/1.0 (norangio@gmail.com)"
 
+# 8-K item code descriptions (most common ones for biotech/pharma)
+ITEM_8K_DESCRIPTIONS: dict[str, str] = {
+    "1.01": "Entry into a Material Agreement",
+    "1.02": "Termination of a Material Agreement",
+    "1.03": "Bankruptcy or Receivership",
+    "2.01": "Completion of Acquisition or Disposition of Assets",
+    "2.02": "Results of Operations and Financial Condition",
+    "2.03": "Creation of a Direct Financial Obligation",
+    "2.04": "Triggering Events That Accelerate or Increase an Obligation",
+    "2.05": "Costs Associated with Exit or Disposal Activities",
+    "2.06": "Material Impairments",
+    "3.01": "Notice of Delisting or Transfer",
+    "3.02": "Unregistered Sales of Equity Securities",
+    "3.03": "Material Modification to Rights of Security Holders",
+    "4.01": "Changes in Registrant's Certifying Accountant",
+    "4.02": "Non-Reliance on Previously Issued Financial Statements",
+    "5.01": "Changes in Control of Registrant",
+    "5.02": "Departure/Election of Directors or Officers; Appointment of Officers",
+    "5.03": "Amendments to Articles of Incorporation or Bylaws",
+    "5.05": "Amendments to Code of Ethics",
+    "5.07": "Submission of Matters to a Vote of Security Holders",
+    "7.01": "Regulation FD Disclosure",
+    "8.01": "Other Events",
+    "9.01": "Financial Statements and Exhibits",
+}
+
+# Human-readable descriptions for annual/quarterly/registration forms
+FORM_DESCRIPTIONS: dict[str, str] = {
+    "10-K": "Annual report with full-year financials, business overview, and risk factors",
+    "10-K/A": "Amendment to annual report",
+    "10-Q": "Quarterly financial report",
+    "10-Q/A": "Amendment to quarterly report",
+    "S-1": "IPO or public offering registration statement",
+    "S-1/A": "Amendment to registration statement",
+}
+
 # Hardcoded CIK map — avoids runtime lookups against EDGAR search
 TICKER_TO_CIK: dict[str, tuple[int, str]] = {
     "VRTX": (875320, "Vertex Pharmaceuticals"),
@@ -93,7 +129,7 @@ class SecFilingsService:
         dates = recent.get("filingDate", [])
         accessions = recent.get("accessionNumber", [])
         primary_docs = recent.get("primaryDocument", [])
-        descriptions = recent.get("primaryDocDescription", [])
+        items_list = recent.get("items", [])
 
         articles: list[Article] = []
         for i, form_type in enumerate(forms):
@@ -112,22 +148,22 @@ class SecFilingsService:
 
             accession = accessions[i] if i < len(accessions) else ""
             primary_doc = primary_docs[i] if i < len(primary_docs) else ""
-            desc = descriptions[i] if i < len(descriptions) else ""
+            raw_items = items_list[i] if i < len(items_list) else ""
 
             accession_dashed = accession.replace("-", "")
             filing_url = (
                 f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_dashed}/{primary_doc}"
             )
 
-            title = f"{company_name} ({ticker}) — {form_type}"
-            if desc:
-                title += f": {desc}"
+            title, description = self._build_filing_text(
+                company_name, ticker, form_type, filing_date_str, raw_items
+            )
 
             articles.append(
                 Article(
                     title=title,
                     url=filing_url,
-                    description=f"{form_type} filed {filing_date_str} by {company_name}. {desc}",
+                    description=description,
                     source_name=f"SEC EDGAR — {company_name}",
                     author=None,
                     published_at=filing_date,
@@ -136,3 +172,44 @@ class SecFilingsService:
             )
 
         return articles
+
+    def _build_filing_text(
+        self,
+        company_name: str,
+        ticker: str,
+        form_type: str,
+        filing_date: str,
+        raw_items: str,
+    ) -> tuple[str, str]:
+        """Build title and description for a filing."""
+        if form_type.startswith("8-K"):
+            # Parse 8-K item codes (e.g. "2.02,9.01")
+            item_codes = [s.strip() for s in raw_items.split(",") if s.strip()]
+            item_descriptions = []
+            for code in item_codes:
+                desc = ITEM_8K_DESCRIPTIONS.get(code)
+                if desc:
+                    item_descriptions.append(f"Item {code}: {desc}")
+                elif code:
+                    item_descriptions.append(f"Item {code}")
+
+            if item_descriptions:
+                # Use the most informative item (skip 9.01 "Exhibits" if others exist)
+                substantive = [d for d in item_descriptions if "9.01" not in d]
+                headline_items = substantive or item_descriptions
+                title = f"{company_name} ({ticker}) — {form_type}: {headline_items[0].split(': ', 1)[-1]}"
+                description = (
+                    f"{company_name} filed {form_type} on {filing_date}. "
+                    + "; ".join(item_descriptions)
+                    + "."
+                )
+            else:
+                title = f"{company_name} ({ticker}) — {form_type}"
+                description = f"{company_name} filed {form_type} on {filing_date}."
+        else:
+            # 10-K, 10-Q, S-1 — use the form description
+            form_desc = FORM_DESCRIPTIONS.get(form_type, form_type)
+            title = f"{company_name} ({ticker}) — {form_type}: {form_desc}"
+            description = f"{company_name} filed {form_type} on {filing_date}. {form_desc}."
+
+        return title, description

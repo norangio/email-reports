@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -94,24 +95,37 @@ class NewsService:
         """
         Fetch news articles for given keywords.
 
-        Uses NewsAPI if available, falls back to RSS feeds.
-        When topic_name matches a key in TOPIC_RSS_FEEDS, those feeds are used
-        instead of the generic RSS_FEEDS.
+        When topic_name has dedicated RSS feeds, those are the primary source
+        and NewsAPI supplements. Otherwise NewsAPI is primary with generic RSS
+        as fallback.
         """
         articles: list[Article] = []
+        has_dedicated_feeds = topic_name and topic_name in self.TOPIC_RSS_FEEDS
 
-        # Try NewsAPI first
-        if self.api_key:
-            newsapi_articles = await self._fetch_from_newsapi(
-                keywords, exclude_keywords, max_articles, days_back
-            )
-            articles.extend(newsapi_articles)
-
-        # Supplement with RSS if needed
-        if len(articles) < max_articles:
-            remaining = max_articles - len(articles)
-            rss_articles = await self._fetch_from_rss(keywords, remaining, topic_name)
+        if has_dedicated_feeds:
+            # Topic-specific RSS feeds are the primary source
+            rss_articles = await self._fetch_from_rss(keywords, max_articles, topic_name)
             articles.extend(rss_articles)
+
+            # Supplement with NewsAPI only if we still need more
+            if len(articles) < max_articles and self.api_key:
+                remaining = max_articles - len(articles)
+                newsapi_articles = await self._fetch_from_newsapi(
+                    keywords, exclude_keywords, remaining, days_back
+                )
+                articles.extend(newsapi_articles)
+        else:
+            # Generic topics: NewsAPI first, generic RSS as fallback
+            if self.api_key:
+                newsapi_articles = await self._fetch_from_newsapi(
+                    keywords, exclude_keywords, max_articles, days_back
+                )
+                articles.extend(newsapi_articles)
+
+            if len(articles) < max_articles:
+                remaining = max_articles - len(articles)
+                rss_articles = await self._fetch_from_rss(keywords, remaining, topic_name)
+                articles.extend(rss_articles)
 
         # Deduplicate by URL
         seen_urls: set[str] = set()
@@ -202,12 +216,15 @@ class NewsService:
             if isinstance(result, list):
                 articles.extend(result)
 
-        # Filter by keywords
-        keyword_set = {kw.lower() for kw in keywords}
+        # Filter by keywords using word-boundary matching
+        keyword_patterns = [
+            re.compile(r"\b" + re.escape(kw.lower()) + r"\b")
+            for kw in keywords
+        ]
         filtered_articles = []
         for article in articles:
             text = f"{article.title} {article.description or ''}".lower()
-            if any(kw in text for kw in keyword_set):
+            if any(pat.search(text) for pat in keyword_patterns):
                 filtered_articles.append(article)
 
         return filtered_articles[:max_articles]
