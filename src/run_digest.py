@@ -31,7 +31,7 @@ settings = get_settings()
 SEED_EMAIL = "norangio@gmail.com"
 SEED_NAME = "Nick Orangio"
 SEED_TOPICS = [
-    {"name": "Cell & Gene Therapy", "keywords": "cell therapy,CAR-T,gene therapy,cell therapy manufacturing,CGT manufacturing,autologous manufacturing,allogeneic cell therapy,ADC manufacturing,antibody drug conjugate"},
+    {"name": "Cell & Gene Therapy", "keywords": "cell therapy,CAR-T,gene therapy,cell therapy manufacturing,CGT manufacturing,autologous manufacturing,allogeneic cell therapy,ADC manufacturing,antibody drug conjugate,CDMO,contract manufacturing,FUJIFILM Diosynth,Boehringer Ingelheim,Samsung Biologics,Recipharm"},
     {"name": "AI News", "keywords": "artificial intelligence,machine learning,LLM,OpenAI,Anthropic"},
     {"name": "NBA", "keywords": "NBA,basketball,NBA playoffs,NBA trade"},
     {"name": "Formula 1", "keywords": "Formula 1,F1,Grand Prix,FIA"},

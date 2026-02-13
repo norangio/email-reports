@@ -25,7 +25,7 @@ jobs:
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       DATABASE_URL: "sqlite+aiosqlite:///./news_digest.db"
       SUMMARY_MAX_LENGTH: "1000"
-      MAX_ARTICLES_PER_TOPIC: "5"
+      MAX_ARTICLES_PER_TOPIC: "8"
 
     steps:
       - uses: actions/checkout@v4

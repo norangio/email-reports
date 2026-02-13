@@ -13,6 +13,7 @@ from src.models.topic import Topic
 from src.models.user import User
 from src.services.email import EmailService, TopicArticles
 from src.services.news import NewsService
+from src.services.sec_filings import SecFilingsService
 from src.services.summarizer import SummarizerService
 
 logger = logging.getLogger(__name__)
@@ -34,10 +35,12 @@ class DigestService:
         self.news_service = NewsService()
         self.summarizer = SummarizerService()
         self.email_service = EmailService()
+        self.sec_filings_service = SecFilingsService()
 
     async def close(self) -> None:
         """Clean up resources."""
         await self.news_service.close()
+        await self.sec_filings_service.close()
 
     async def generate_and_send_digest(
         self,
@@ -81,6 +84,7 @@ class DigestService:
                     keywords=keywords,
                     exclude_keywords=exclude,
                     max_articles=settings.max_articles_per_topic,
+                    topic_name=topic.name,
                 )
 
                 if not articles:
@@ -120,6 +124,26 @@ class DigestService:
             except Exception as e:
                 logger.error(f"Error processing topic '{topic.name}': {e}")
                 continue
+
+        # Fetch SEC filings as a separate section
+        try:
+            sec_articles = await self.sec_filings_service.fetch_recent_filings()
+            if sec_articles:
+                sec_summaries = await self.summarizer.summarize_articles(
+                    articles=sec_articles,
+                    topic_name="SEC Filings",
+                    topic_keywords=["SEC", "filing", "8-K", "10-Q", "10-K", "S-1"],
+                )
+                sec_pairs: list[tuple] = []
+                for article, summary in zip(sec_articles, sec_summaries):
+                    sec_pairs.append((article, summary))
+                if sec_pairs:
+                    topic_articles_list.append(
+                        TopicArticles(name="SEC Filings", items=sec_pairs)
+                    )
+                    logger.info(f"Added {len(sec_pairs)} SEC filings to digest")
+        except Exception as e:
+            logger.error(f"Error fetching SEC filings: {e}")
 
         if not topic_articles_list:
             logger.warning(f"No content generated for user {user.email}")

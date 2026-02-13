@@ -41,7 +41,7 @@ class NewsService:
 
     NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 
-    # Popular RSS feeds as fallback
+    # Generic RSS feeds as fallback for topics without specific feeds
     RSS_FEEDS = [
         "https://feeds.arstechnica.com/arstechnica/technology-lab",
         "https://www.wired.com/feed/rss",
@@ -54,6 +54,22 @@ class NewsService:
         "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
         "https://feeds.bbci.co.uk/news/rss.xml",
     ]
+
+    # Topic-specific RSS feeds — used instead of generic feeds when available
+    TOPIC_RSS_FEEDS: dict[str, list[str]] = {
+        "Cell & Gene Therapy": [
+            "https://www.fiercebiotech.com/rss/xml",
+            "https://www.fiercepharma.com/rss/xml",
+            "https://www.statnews.com/feed/",
+            "https://www.biospace.com/rss/",
+            "https://www.genengnews.com/feed/",
+            "https://www.biopharmadive.com/feeds/news/",
+        ],
+        "Asia & SE Asia": [
+            "https://www.fiercebiotech.com/rss/xml",
+            "https://www.fiercepharma.com/rss/xml",
+        ],
+    }
 
     def __init__(self) -> None:
         self.api_key = settings.newsapi_key
@@ -73,11 +89,14 @@ class NewsService:
         exclude_keywords: list[str] | None = None,
         max_articles: int = 10,
         days_back: int = 7,
+        topic_name: str | None = None,
     ) -> list[Article]:
         """
         Fetch news articles for given keywords.
 
         Uses NewsAPI if available, falls back to RSS feeds.
+        When topic_name matches a key in TOPIC_RSS_FEEDS, those feeds are used
+        instead of the generic RSS_FEEDS.
         """
         articles: list[Article] = []
 
@@ -91,7 +110,7 @@ class NewsService:
         # Supplement with RSS if needed
         if len(articles) < max_articles:
             remaining = max_articles - len(articles)
-            rss_articles = await self._fetch_from_rss(keywords, remaining)
+            rss_articles = await self._fetch_from_rss(keywords, remaining, topic_name)
             articles.extend(rss_articles)
 
         # Deduplicate by URL
@@ -169,12 +188,14 @@ class NewsService:
         self,
         keywords: list[str],
         max_articles: int,
+        topic_name: str | None = None,
     ) -> list[Article]:
         """Fetch articles from RSS feeds."""
         articles: list[Article] = []
 
-        # Fetch feeds concurrently
-        tasks = [self._parse_rss_feed(url) for url in self.RSS_FEEDS[:5]]  # Limit to 5 feeds
+        # Use topic-specific feeds if available, otherwise generic
+        feeds = self.TOPIC_RSS_FEEDS.get(topic_name, self.RSS_FEEDS[:5]) if topic_name else self.RSS_FEEDS[:5]
+        tasks = [self._parse_rss_feed(url) for url in feeds]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for result in results:
