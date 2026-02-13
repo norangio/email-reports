@@ -1,10 +1,12 @@
 """SEC EDGAR filings service for tracking biotech/CDMO company filings."""
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import trafilatura
 
 from src.services.news import Article
 
@@ -253,3 +255,25 @@ class SecFilingsService:
             description = f"{company_name} filed {form_type} on {filing_date}. {form_desc}."
 
         return title, description
+
+    async def scrape_filing_content(
+        self, filings: list[Article], max_chars: int = 3000
+    ) -> None:
+        """Scrape body text from SEC filing URLs into article.body_text."""
+        tasks = [self._scrape_one_filing(f, max_chars) for f in filings]
+        await asyncio.gather(*tasks, return_exceptions=True)
+        scraped = sum(1 for f in filings if f.body_text)
+        logger.info(f"Scraped {scraped}/{len(filings)} SEC filings")
+
+    async def _scrape_one_filing(self, filing: Article, max_chars: int) -> None:
+        """Scrape a single SEC filing. Sets filing.body_text on success."""
+        if not filing.url:
+            return
+        try:
+            response = await self.client.get(filing.url)
+            response.raise_for_status()
+            text = trafilatura.extract(response.text)
+            if text:
+                filing.body_text = text[:max_chars]
+        except Exception as e:
+            logger.debug(f"SEC scrape failed for {filing.url}: {type(e).__name__}: {e}")

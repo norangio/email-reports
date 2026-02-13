@@ -60,7 +60,7 @@ class NewsService:
     # Topic-specific RSS feeds — used instead of generic feeds when available.
     # Articles from these feeds skip keyword filtering (the feeds ARE the curation).
     TOPIC_RSS_FEEDS: dict[str, list[str]] = {
-        "Cell & Gene Therapy": [
+        "Biotech & Pharma": [
             "https://www.fiercebiotech.com/rss/xml",
             "https://www.fiercepharma.com/rss/xml",
             "https://www.statnews.com/feed/",

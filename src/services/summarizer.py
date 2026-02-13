@@ -269,6 +269,32 @@ class SummarizerService:
                 )
         return results
 
+    async def summarize_filing(self, filing: Article) -> str:
+        """Generate a 1-sentence summary of a SEC filing from its scraped content."""
+        content = filing.body_text or filing.description or filing.title
+
+        prompt = f"""SEC filing: {filing.title}
+
+Content (may be truncated):
+{content[:2500]}
+
+Write a single concise sentence summarizing the most important takeaway from this filing. Focus on:
+- For earnings (8-K 2.02 / 10-K / 10-Q): revenue, profit/loss, guidance, key metrics
+- For material agreements (8-K 1.01): what the deal is, with whom, and the value
+- For officer changes (8-K 5.02): who left/joined and what role
+- For other filings: the single most newsworthy fact
+
+Just the sentence, no preamble."""
+
+        system = "You summarize SEC filings into a single actionable sentence for a biotech industry professional."
+
+        try:
+            summary = await self.client.complete(system, prompt, max_tokens=150)
+            return summary.strip()
+        except Exception as e:
+            logger.error(f"Failed to summarize filing '{filing.title}': {type(e).__name__}: {e}")
+            return ""
+
     async def synthesize_topic(
         self,
         topic_name: str,

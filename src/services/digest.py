@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # CGT topic name — notable SEC filings get woven into this topic's prose
-CGT_TOPIC_NAME = "Cell & Gene Therapy"
+CGT_TOPIC_NAME = "Biotech & Pharma"
 
 
 def _renumber_and_linkify(
@@ -162,7 +162,7 @@ class DigestService:
         # 2. Scrape all articles concurrently
         await self.scraper.scrape_articles(all_articles)
 
-        # 3. Fetch and classify SEC filings
+        # 3. Fetch, classify, and scrape SEC filings
         classified = None
         try:
             sec_articles = await self.sec_filings_service.fetch_recent_filings()
@@ -172,6 +172,9 @@ class DigestService:
                     f"SEC filings: {len(classified.notable)} notable, "
                     f"{len(classified.routine)} routine"
                 )
+                # Scrape filing content for AI summarization
+                all_filings = classified.notable + classified.routine
+                await self.sec_filings_service.scrape_filing_content(all_filings)
         except Exception as e:
             logger.error(f"Error fetching SEC filings: {e}")
 
@@ -233,19 +236,26 @@ class DigestService:
         # 7. Generate overview from syntheses
         overview = await self.summarizer.generate_overview(syntheses)
 
-        # 8. Build routine filings list
+        # 8. Build routine filings list with AI summaries
         routine_filings: list[RoutineFiling] = []
         if classified and classified.routine:
+            # AI-summarize each filing for substantive detail
             for filing in classified.routine:
-                # Extract company name and form type from title
+                if filing.body_text:
+                    ai_detail = await self.summarizer.summarize_filing(filing)
+                else:
+                    ai_detail = ""
+
                 parts = filing.title.split(" — ", 1)
                 company = parts[0] if parts else "Unknown"
                 form_info = parts[1].split(":")[0] if len(parts) > 1 else "Unknown"
                 date_str = ""
                 if filing.published_at:
                     date_str = filing.published_at.strftime("%b %d")
-                # Extract substantive description — strip boilerplate prefix
-                detail = _extract_filing_detail(filing.description or "", form_info.strip())
+                # Use AI summary if available, fall back to metadata extraction
+                detail = ai_detail or _extract_filing_detail(
+                    filing.description or "", form_info.strip()
+                )
                 routine_filings.append(
                     RoutineFiling(
                         company=company,
