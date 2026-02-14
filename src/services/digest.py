@@ -57,7 +57,7 @@ def _renumber_and_linkify(
     # Wrap paragraphs in styled <p> tags
     paragraphs = [p.strip() for p in prose.split("\n\n") if p.strip()]
     styled_paragraphs = [
-        f'<p style="margin: 0 0 12px 0; font-family: Calibri, \'Segoe UI\', Arial, sans-serif; '
+        f'<p class="body-text" style="margin: 0 0 12px 0; font-family: Calibri, \'Segoe UI\', Arial, sans-serif; '
         f'font-size: 11pt; color: #333333; line-height: 1.6;">{p}</p>'
         for p in paragraphs
     ]

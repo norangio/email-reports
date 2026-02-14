@@ -9,8 +9,37 @@
         body, table, td {font-family: Calibri, Arial, sans-serif !important;}
     </style>
     <![endif]-->
+    <style type="text/css">
+        /* Mobile-friendly font sizes — overrides inline styles on iOS/Android */
+        @media screen and (max-width: 600px) {
+            .body-text, .body-text p, .body-text td {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            .overview-text {
+                font-size: 16px !important;
+                line-height: 1.6 !important;
+            }
+            .heading-1 {
+                font-size: 26px !important;
+            }
+            .heading-2 {
+                font-size: 18px !important;
+            }
+            .table-text, .table-text td {
+                font-size: 14px !important;
+            }
+            .footer-text {
+                font-size: 13px !important;
+            }
+            .content-cell {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+        }
+    </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333;">
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
         <tr>
             <td align="center" style="padding: 20px 10px;">
@@ -19,11 +48,11 @@
 
                     <!-- Header -->
                     <tr>
-                        <td style="padding: 30px 40px 20px 40px; border-bottom: 2px solid #0066cc;">
-                            <h1 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
+                        <td class="content-cell" style="padding: 30px 40px 20px 40px; border-bottom: 2px solid #0066cc;">
+                            <h1 class="heading-1" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
                                 Nick's Morning Brief
                             </h1>
-                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
+                            <p class="body-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
                                 {{ digest_date.strftime('%A, %B %d, %Y') }}
                             </p>
                         </td>
@@ -32,8 +61,8 @@
                     <!-- Overview -->
                     {% if overview %}
                     <tr>
-                        <td style="padding: 30px 40px 20px 40px;">
-                            <p style="margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
+                        <td class="content-cell" style="padding: 30px 40px 20px 40px;">
+                            <p class="overview-text" style="margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
                                 {{ overview }}
                             </p>
                         </td>
@@ -43,8 +72,8 @@
                     <!-- Topics -->
                     {% for topic in topics %}
                     <tr>
-                        <td style="padding: 10px 40px 30px 40px;">
-                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                        <td class="content-cell body-text" style="padding: 10px 40px 30px 40px;">
+                            <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 {{ topic.name }}
                             </h2>
                             {{ topic.prose_html | safe }}
@@ -55,11 +84,11 @@
                     <!-- Routine SEC Filings -->
                     {% if routine_filings %}
                     <tr>
-                        <td style="padding: 10px 40px 30px 40px;">
-                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                        <td class="content-cell" style="padding: 10px 40px 30px 40px;">
+                            <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 SEC Filings
                             </h2>
-                            <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; border-collapse: collapse;">
+                            <table class="table-text" role="presentation" width="100%" cellpadding="6" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; border-collapse: collapse;">
                                 <tr style="background-color: #f8f9fa;">
                                     <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Company</td>
                                     <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Form</td>
@@ -84,11 +113,11 @@
                     <!-- Sources -->
                     {% if sources %}
                     <tr>
-                        <td style="padding: 10px 40px 30px 40px;">
-                            <h2 style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
+                        <td class="content-cell" style="padding: 10px 40px 30px 40px;">
+                            <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 Sources
                             </h2>
-                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt;">
+                            <table class="table-text" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt;">
                                 {% for source in sources %}
                                 <tr>
                                     <td style="padding: 3px 0; color: #666666; line-height: 1.4;">
@@ -103,8 +132,8 @@
 
                     <!-- AI Attribution -->
                     <tr>
-                        <td style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
-                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
+                        <td class="content-cell" style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
+                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
                                 <strong>AI Model:</strong> Synthesis by {{ ai_provider }} ({{ ai_model }})
                             </p>
                         </td>
@@ -112,11 +141,11 @@
 
                     <!-- Footer -->
                     <tr>
-                        <td style="padding: 25px 40px; background-color: #333333;">
-                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                        <td class="content-cell" style="padding: 25px 40px; background-color: #333333;">
+                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
                                 You're receiving this because you subscribed to {{ app_name }}.
                             </p>
-                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                            <p class="footer-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
                                 Reply to this email to manage your preferences or unsubscribe.
                             </p>
                         </td>
