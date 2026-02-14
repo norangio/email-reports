@@ -102,7 +102,7 @@ src/
 │   ├── email.py       # Resend email delivery + template rendering
 │   └── digest.py      # Orchestration: fetch → scrape → classify → synthesize → render → send
 └── templates/
-    ├── brief_email.html  # Morning Brief HTML template (600px table, Calibri)
+    ├── brief_email.html  # Morning Brief HTML template (fluid layout, Calibri)
     └── brief_email.txt   # Plain text fallback
 ```
 
@@ -112,6 +112,7 @@ src/
 - **Topic sections**: 3-5 paragraphs of synthesized prose per topic with superscript `[N]` citation links
 - **SEC filings**: Notable 8-K filings woven into Biotech & Pharma prose; routine filings in a compact table with AI-generated 1-sentence summaries
 - **Sources**: Numbered reference list at bottom with title, source, and link
+- **Mobile-friendly**: Fluid layout (`width="100%"` + `max-width: 600px`) renders at native screen width on iOS/Android. Inline font sizes in `px` (not `pt`) ensure readability without relying on `<style>` blocks, which Gmail and Outlook mobile strip.
 
 ## Configuration
 
