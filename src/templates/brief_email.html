@@ -39,7 +39,7 @@
         }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
         <tr>
             <td align="center" style="padding: 20px 10px;">
@@ -52,7 +52,7 @@
                             <h1 class="heading-1" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
                                 Nick's Morning Brief
                             </h1>
-                            <p class="body-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
+                            <p class="body-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #666666;">
                                 {{ digest_date.strftime('%A, %B %d, %Y') }}
                             </p>
                         </td>
@@ -62,7 +62,7 @@
                     {% if overview %}
                     <tr>
                         <td class="content-cell" style="padding: 30px 40px 20px 40px;">
-                            <p class="overview-text" style="margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
+                            <p class="overview-text" style="margin: 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #444444; line-height: 1.6;">
                                 {{ overview }}
                             </p>
                         </td>
@@ -88,7 +88,7 @@
                             <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 SEC Filings
                             </h2>
-                            <table class="table-text" role="presentation" width="100%" cellpadding="6" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; border-collapse: collapse;">
+                            <table class="table-text" role="presentation" width="100%" cellpadding="6" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14px; border-collapse: collapse;">
                                 <tr style="background-color: #f8f9fa;">
                                     <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Company</td>
                                     <td style="border-bottom: 1px solid #e0e0e0; font-weight: bold; color: #666666;">Form</td>
@@ -117,7 +117,7 @@
                             <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 Sources
                             </h2>
-                            <table class="table-text" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt;">
+                            <table class="table-text" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14px;">
                                 {% for source in sources %}
                                 <tr>
                                     <td style="padding: 3px 0; color: #666666; line-height: 1.4;">
@@ -133,7 +133,7 @@
                     <!-- AI Attribution -->
                     <tr>
                         <td class="content-cell" style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
-                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
+                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #666666;">
                                 <strong>AI Model:</strong> Synthesis by {{ ai_provider }} ({{ ai_model }})
                             </p>
                         </td>
@@ -142,10 +142,10 @@
                     <!-- Footer -->
                     <tr>
                         <td class="content-cell" style="padding: 25px 40px; background-color: #333333;">
-                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                            <p class="footer-text" style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #cccccc; text-align: center;">
                                 You're receiving this because you subscribed to {{ app_name }}.
                             </p>
-                            <p class="footer-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                            <p class="footer-text" style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #cccccc; text-align: center;">
                                 Reply to this email to manage your preferences or unsubscribe.
                             </p>
                         </td>

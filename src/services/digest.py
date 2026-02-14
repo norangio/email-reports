@@ -58,7 +58,7 @@ def _renumber_and_linkify(
     paragraphs = [p.strip() for p in prose.split("\n\n") if p.strip()]
     styled_paragraphs = [
         f'<p class="body-text" style="margin: 0 0 12px 0; font-family: Calibri, \'Segoe UI\', Arial, sans-serif; '
-        f'font-size: 11pt; color: #333333; line-height: 1.6;">{p}</p>'
+        f'font-size: 16px; color: #333333; line-height: 1.6;">{p}</p>'
         for p in paragraphs
     ]
     return "\n".join(styled_paragraphs)

@@ -10,7 +10,7 @@
     </style>
     <![endif]-->
 </head>
-<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333333;">
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; line-height: 1.5; color: #333333; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5;">
         <tr>
             <td align="center" style="padding: 20px 10px;">
@@ -23,7 +23,7 @@
                             <h1 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 24pt; font-weight: normal; color: #0066cc;">
                                 Nick's Morning Brief
                             </h1>
-                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #666666;">
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #666666;">
                                 {{ digest_date.strftime('%A, %B %d, %Y') }}
                             </p>
                         </td>
@@ -32,11 +32,11 @@
                     <!-- Greeting -->
                     <tr>
                         <td style="padding: 30px 40px 20px 40px;">
-                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #333333;">
                                 Nick — here's what's going on. <strong>{{ total_articles }} stories</strong> across {{ topics|length }} topic{% if topics|length != 1 %}s{% endif %} today.
                             </p>
                             {% if overview %}
-                            <p style="margin: 15px 0 0 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #444444; line-height: 1.6;">
+                            <p style="margin: 15px 0 0 0; padding: 15px; background-color: #f8f9fa; border-left: 3px solid #0066cc; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #444444; line-height: 1.6;">
                                 {{ overview }}
                             </p>
                             {% endif %}
@@ -54,7 +54,7 @@
                                         <h2 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                             {{ topic.name }}
                                         </h2>
-                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #888888;">
+                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #888888;">
                                             {{ topic.articles|length }} article{% if topic.articles|length != 1 %}s{% endif %}
                                         </p>
                                     </td>
@@ -71,19 +71,19 @@
                                     </td>
                                     {% endif %}
                                     <td valign="top">
-                                        <h3 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; font-weight: bold; color: #333333;">
+                                        <h3 style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: bold; color: #333333;">
                                             <a href="{{ article.url }}" style="color: #0066cc; text-decoration: none;">
                                                 {{ article.title }}
                                             </a>
                                         </h3>
-                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #888888;">
+                                        <p style="margin: 5px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #888888;">
                                             {{ article.source_name }}{% if article.published_at %} &bull; {{ article.published_at.strftime('%b %d') }}{% endif %}
                                         </p>
-                                        <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #333333;">
+                                        <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 16px; color: #333333;">
                                             {{ article.summary }}
                                         </p>
                                         <p style="margin: 10px 0 0 0;">
-                                            <a href="{{ article.url }}" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #0066cc; text-decoration: none;">
+                                            <a href="{{ article.url }}" style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #0066cc; text-decoration: none;">
                                                 Read more &rarr;
                                             </a>
                                         </p>
@@ -98,7 +98,7 @@
                     <!-- AI Attribution -->
                     <tr>
                         <td style="padding: 20px 40px; background-color: #f8f9fa; border-top: 1px solid #e0e0e0;">
-                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #666666;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #666666;">
                                 <strong>AI Model:</strong> Summaries generated by {{ ai_provider }} ({{ ai_model }})
                             </p>
                         </td>
@@ -107,10 +107,10 @@
                     <!-- Footer -->
                     <tr>
                         <td style="padding: 25px 40px; background-color: #333333;">
-                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                            <p style="margin: 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #cccccc; text-align: center;">
                                 You're receiving this because you subscribed to {{ app_name }}.
                             </p>
-                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #cccccc; text-align: center;">
+                            <p style="margin: 10px 0 0 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #cccccc; text-align: center;">
                                 Reply to this email to manage your preferences or unsubscribe.
                             </p>
                         </td>
