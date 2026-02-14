@@ -1,13 +1,19 @@
 """AI-powered news summarization service."""
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import anthropic
 import openai
 
 from src.core.config import AIProvider, get_settings
 from src.services.news import Article
+
+if TYPE_CHECKING:
+    from src.services.gist_history import DaySynthesis
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -300,6 +306,7 @@ Just the sentence, no preamble."""
         topic_name: str,
         articles: list[Article],
         notable_filings: list[Article] | None = None,
+        previous_syntheses: list[DaySynthesis] | None = None,
     ) -> TopicSynthesis:
         """
         Synthesize a topic into flowing prose with [N] source references.
@@ -338,9 +345,27 @@ Just the sentence, no preamble."""
 
         sources_text = "\n\n".join(source_lines)
 
+        # Build previous-coverage context if available
+        prev_context = ""
+        if previous_syntheses:
+            prev_parts = []
+            for ps in previous_syntheses[:5]:  # cap at 5 days
+                prev_parts.append(f"--- {ps.date} ---\n{ps.prose}")
+            prev_context = (
+                "\n\nHere is what previous briefs covered for this topic:\n\n"
+                + "\n\n".join(prev_parts)
+                + "\n\nUse this context to:\n"
+                "- Avoid repeating stories already covered in depth — focus on what's genuinely new\n"
+                "- Reference ongoing developments naturally (\"as reported earlier this week...\", "
+                "\"following up on Tuesday's coverage...\")\n"
+                "- Build a narrative arc if a story is evolving over multiple days\n"
+                "- Do NOT simply summarize the previous coverage — only reference it when relevant "
+                "to today's new sources\n"
+            )
+
         prompt = f"""Here are the sources for the "{topic_name}" section of a daily news brief:
 
-{sources_text}
+{sources_text}{prev_context}
 
 Write 3-5 paragraphs synthesizing the key developments and news from these sources. Rules:
 - Reference sources inline as [1], [2], etc.
@@ -388,6 +413,7 @@ Write 3-5 paragraphs synthesizing the key developments and news from these sourc
     async def generate_overview(
         self,
         topic_syntheses: list[TopicSynthesis],
+        previous_overviews: list[DaySynthesis] | None = None,
     ) -> str | None:
         """
         Generate a witty overview paragraph from topic syntheses.
@@ -406,9 +432,20 @@ Write 3-5 paragraphs synthesizing the key developments and news from these sourc
 
         context_text = "\n\n".join(summary_parts)
 
+        # Add previous overview context to avoid repeating highlights
+        prev_overview_context = ""
+        if previous_overviews:
+            prev_parts = []
+            for po in previous_overviews[:2]:  # last 1-2 days
+                prev_parts.append(f"--- {po.date} ---\n{po.prose}")
+            prev_overview_context = (
+                "\n\nRecent highlight bullets (avoid repeating these):\n\n"
+                + "\n\n".join(prev_parts) + "\n"
+            )
+
         prompt = f"""Here are summaries of today's news topics:
 
-{context_text}
+{context_text}{prev_overview_context}
 
 Pick the 3-4 most important or actionable items from today's news and write a short highlight for each (1 sentence each). Prioritize:
 1. Biotech/pharma news that affects the CGT manufacturing or CDMO landscape

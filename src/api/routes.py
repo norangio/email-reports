@@ -384,7 +384,7 @@ async def send_digest_now(
     """
     digest_service = DigestService()
     try:
-        digest = await digest_service.generate_and_send_digest(db, current_user)
+        digest, _, _, _ = await digest_service.generate_and_send_digest(db, current_user)
 
         if not digest:
             raise HTTPException(

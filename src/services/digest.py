@@ -18,6 +18,7 @@ from src.services.email import (
     SourceReference,
     TopicBrief,
 )
+from src.services.gist_history import ArticleHistory, DaySynthesis
 from src.services.news import Article, NewsService
 from src.services.scraper import ScraperService
 from src.services.sec_filings import SecFilingsService, classify_filings
@@ -117,8 +118,12 @@ class DigestService:
         self,
         db: AsyncSession,
         user: User,
-    ) -> Digest | None:
-        """Generate and send a brief-format digest for a single user."""
+        article_history: ArticleHistory | None = None,
+    ) -> tuple[Digest | None, list[Article], list[TopicSynthesis], str | None]:
+        """Generate and send a brief-format digest for a single user.
+
+        Returns (digest, articles_sent, syntheses, overview_text).
+        """
         # Load user's active topics
         result = await db.execute(
             select(Topic).where(Topic.user_id == user.id, Topic.is_active == True)
@@ -127,9 +132,18 @@ class DigestService:
 
         if not topics:
             logger.info(f"User {user.email} has no active topics, skipping digest")
-            return None
+            return None, [], [], None
 
         ai_provider, ai_model = self.summarizer.get_model_info()
+
+        # Prepare history-based filtering
+        exclude_urls: set[str] | None = None
+        syntheses_by_topic: dict[str, list[DaySynthesis]] = {}
+        if article_history:
+            exclude_urls = article_history.sent_urls(days=3)
+            syntheses_by_topic = article_history.recent_syntheses_by_topic(days=7)
+            if exclude_urls:
+                logger.info(f"Excluding {len(exclude_urls)} previously sent URLs")
 
         # 1. Fetch articles for all topics
         topic_data: dict[str, tuple[Topic, list[Article]]] = {}
@@ -145,6 +159,7 @@ class DigestService:
                     exclude_keywords=exclude,
                     max_articles=settings.max_articles_per_topic,
                     topic_name=topic.name,
+                    exclude_urls=exclude_urls,
                 )
 
                 if articles:
@@ -157,7 +172,7 @@ class DigestService:
 
         if not topic_data:
             logger.warning(f"No articles found for any topic for user {user.email}")
-            return None
+            return None, [], [], None
 
         # 2. Scrape all articles concurrently
         await self.scraper.scrape_articles(all_articles)
@@ -192,6 +207,7 @@ class DigestService:
                 topic_name=topic_name,
                 articles=articles,
                 notable_filings=notable_for_topic,
+                previous_syntheses=syntheses_by_topic.get(topic_name),
             )
             syntheses.append(synthesis)
 
@@ -203,7 +219,7 @@ class DigestService:
 
         if not syntheses:
             logger.warning(f"No syntheses generated for user {user.email}")
-            return None
+            return None, [], [], None
 
         # 5. Build global source numbering
         all_sources: list[SourceReference] = []
@@ -234,7 +250,8 @@ class DigestService:
             topic_briefs.append(TopicBrief(name=synthesis.topic_name, prose_html=prose_html))
 
         # 7. Generate overview from syntheses
-        overview = await self.summarizer.generate_overview(syntheses)
+        previous_overviews = syntheses_by_topic.get("__overview__")
+        overview = await self.summarizer.generate_overview(syntheses, previous_overviews)
 
         # 8. Build routine filings list with AI summaries
         routine_filings: list[RoutineFiling] = []
@@ -285,7 +302,7 @@ class DigestService:
 
         if not email_id:
             logger.error(f"Failed to send digest to {user.email}")
-            return None
+            return None, all_articles, syntheses, overview
 
         # 11. Record in DB
         digest = Digest(
@@ -331,7 +348,7 @@ class DigestService:
             f"{len(syntheses)} topics synthesized, {len(all_sources)} sources"
         )
 
-        return digest
+        return digest, all_articles, syntheses, overview
 
     async def process_pending_digests(self, db: AsyncSession) -> int:
         """Process all users who are due for a digest."""
@@ -349,7 +366,7 @@ class DigestService:
         for user in users:
             if self._should_send_digest(user):
                 try:
-                    digest = await self.generate_and_send_digest(db, user)
+                    digest, _, _, _ = await self.generate_and_send_digest(db, user)
                     if digest:
                         digests_sent += 1
                 except Exception as e:

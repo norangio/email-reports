@@ -23,6 +23,9 @@ jobs:
       EMAIL_FROM_NAME: "Nick's Morning Brief"
       # App
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      # Gist-based article history (cross-day dedup)
+      GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      GIST_ID: ${{ secrets.GIST_ID }}
       DATABASE_URL: "sqlite+aiosqlite:///./news_digest.db"
       SUMMARY_MAX_LENGTH: "1000"
       MAX_ARTICLES_PER_TOPIC: "8"

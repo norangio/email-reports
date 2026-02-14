@@ -10,6 +10,7 @@ Seeds the user and topics if the DB is empty (ephemeral CI databases).
 import asyncio
 import logging
 import sys
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 
@@ -18,6 +19,11 @@ from src.core.database import async_session_maker, init_db
 from src.models.topic import Topic
 from src.models.user import User
 from src.services.digest import DigestService
+from src.services.gist_history import (
+    DaySynthesis,
+    GistHistoryService,
+    HistoryEntry,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -83,20 +89,60 @@ async def main() -> None:
     await init_db()
 
     digest_service = DigestService()
+    gist_service = GistHistoryService()
 
     try:
+        # Load article history from gist (graceful degradation)
+        history = None
+        if gist_service.enabled:
+            logger.info("Loading article history from gist")
+            history = await gist_service.read_history()
+        else:
+            logger.info("Gist history not configured — skipping dedup")
+
         async with async_session_maker() as db:
             user = await ensure_user(db)
 
             logger.info(f"Generating digest for {user.email}")
-            digest = await digest_service.generate_and_send_digest(db, user)
+            digest, sent_articles, syntheses, overview_text = (
+                await digest_service.generate_and_send_digest(
+                    db, user, article_history=history
+                )
+            )
 
             if digest:
                 logger.info(f"Digest sent successfully (id={digest.id})")
+
+                # Write today's articles and syntheses back to gist
+                if gist_service.enabled:
+                    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    new_entries = [
+                        HistoryEntry(
+                            url=a.url,
+                            title=a.title,
+                            topic="",  # topic not needed for URL dedup
+                            date_sent=today,
+                        )
+                        for a in sent_articles
+                        if a.url
+                    ]
+                    new_syntheses = [
+                        DaySynthesis(topic=s.topic_name, prose=s.prose, date=today)
+                        for s in syntheses
+                    ]
+                    if overview_text:
+                        new_syntheses.append(
+                            DaySynthesis(topic="__overview__", prose=overview_text, date=today)
+                        )
+
+                    await gist_service.write_history(
+                        new_entries, new_syntheses, existing=history
+                    )
             else:
                 logger.warning("No digest generated (no content or send failed)")
     finally:
         await digest_service.close()
+        await gist_service.close()
 
 
 if __name__ == "__main__":

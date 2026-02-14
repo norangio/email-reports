@@ -113,6 +113,7 @@ class NewsService:
         max_articles: int = 10,
         days_back: int = 7,
         topic_name: str | None = None,
+        exclude_urls: set[str] | None = None,
     ) -> list[Article]:
         """
         Fetch news articles for given keywords.
@@ -176,8 +177,8 @@ class NewsService:
                 rss_articles = await self._fetch_from_rss(keywords, remaining, topic_name)
                 articles.extend(rss_articles)
 
-        # Deduplicate by URL
-        seen_urls: set[str] = set()
+        # Deduplicate by URL and exclude previously sent URLs
+        seen_urls: set[str] = set(exclude_urls or ())
         unique_articles: list[Article] = []
         for article in articles:
             if article.url not in seen_urls:

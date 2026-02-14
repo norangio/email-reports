@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     email_from_address: str = Field(default="digest@yourdomain.com")
     email_from_name: str = Field(default="AI News Digest")
 
+    # Gist-based article history (for cross-day dedup)
+    github_token: str = Field(default="")
+    gist_id: str = Field(default="")
+
     # Scheduling
     default_digest_hour: int = Field(default=8, ge=0, le=23)
     default_digest_minute: int = Field(default=0, ge=0, le=59)
