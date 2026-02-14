@@ -19,6 +19,7 @@ from src.services.email import (
     TopicBrief,
 )
 from src.services.gist_history import ArticleHistory, DaySynthesis
+from src.services.nba_stats import NbaStatsService, render_nba_stats_html, render_nba_stats_text
 from src.services.news import Article, NewsService
 from src.services.scraper import ScraperService
 from src.services.sec_filings import SecFilingsService, classify_filings
@@ -29,6 +30,7 @@ settings = get_settings()
 
 # CGT topic name — notable SEC filings get woven into this topic's prose
 CGT_TOPIC_NAME = "Biotech & Pharma"
+NBA_TOPIC_NAME = "NBA"
 
 
 def _renumber_and_linkify(
@@ -107,6 +109,7 @@ class DigestService:
         self.email_service = EmailService()
         self.sec_filings_service = SecFilingsService()
         self.scraper = ScraperService()
+        self.nba_stats_service = NbaStatsService()
 
     async def close(self) -> None:
         """Clean up resources."""
@@ -193,6 +196,19 @@ class DigestService:
         except Exception as e:
             logger.error(f"Error fetching SEC filings: {e}")
 
+        # 3b. Fetch NBA scores and standings
+        nba_stats = None
+        if any(name == NBA_TOPIC_NAME for name in topic_data):
+            try:
+                nba_stats = self.nba_stats_service.fetch_all()
+                if nba_stats:
+                    logger.info(
+                        f"NBA stats: {len(nba_stats.games)} games, "
+                        f"{len(nba_stats.east_standings)}+{len(nba_stats.west_standings)} standings"
+                    )
+            except Exception as e:
+                logger.error(f"Error fetching NBA stats: {type(e).__name__}: {e}")
+
         # 4. Synthesize each topic (one AI call per topic)
         syntheses: list[TopicSynthesis] = []
         # Map: topic_name → list of (articles + notable_filings) used for that topic
@@ -203,11 +219,27 @@ class DigestService:
             if topic_name == CGT_TOPIC_NAME and classified and classified.notable:
                 notable_for_topic = classified.notable
 
+            # Build extra context for NBA topic (scores for narrative color)
+            extra_context = None
+            if topic_name == NBA_TOPIC_NAME and nba_stats and nba_stats.games:
+                score_lines = []
+                for g in nba_stats.games:
+                    winner = g.away_team if g.away_score > g.home_score else g.home_team
+                    score_lines.append(
+                        f"{g.away_team} {g.away_score} @ {g.home_team} {g.home_score} "
+                        f"(W: {winner})"
+                    )
+                extra_context = (
+                    f"Yesterday's scores ({nba_stats.scores_date}):\n"
+                    + "\n".join(score_lines)
+                )
+
             synthesis = await self.summarizer.synthesize_topic(
                 topic_name=topic_name,
                 articles=articles,
                 notable_filings=notable_for_topic,
                 previous_syntheses=syntheses_by_topic.get(topic_name),
+                extra_context=extra_context,
             )
             syntheses.append(synthesis)
 
@@ -247,7 +279,21 @@ class DigestService:
         for synthesis in syntheses:
             local_map = topic_local_to_global[synthesis.topic_name]
             prose_html = _renumber_and_linkify(synthesis.prose, local_map, all_sources)
-            topic_briefs.append(TopicBrief(name=synthesis.topic_name, prose_html=prose_html))
+
+            stats_html = None
+            stats_text = None
+            if synthesis.topic_name == NBA_TOPIC_NAME and nba_stats:
+                stats_html = render_nba_stats_html(nba_stats)
+                stats_text = render_nba_stats_text(nba_stats)
+
+            topic_briefs.append(
+                TopicBrief(
+                    name=synthesis.topic_name,
+                    prose_html=prose_html,
+                    stats_html=stats_html,
+                    stats_text=stats_text,
+                )
+            )
 
         # 7. Generate overview from syntheses
         previous_overviews = syntheses_by_topic.get("__overview__")

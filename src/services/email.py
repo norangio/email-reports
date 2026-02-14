@@ -37,6 +37,8 @@ class TopicBrief:
 
     name: str
     prose_html: str  # paragraphs with superscript <a> links
+    stats_html: str | None = None  # pre-rendered stats block (e.g. NBA scores)
+    stats_text: str | None = None  # plain text version of stats block
 
 
 @dataclass

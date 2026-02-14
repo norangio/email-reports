@@ -11,6 +11,9 @@ Nick's Morning Brief
 {{ topic.name }}
 ------------------------------------------------------------
 
+{% if topic.stats_text %}
+{{ topic.stats_text }}
+{% endif %}
 {{ topic.prose_html | striptags }}
 
 {% endfor %}

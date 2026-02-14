@@ -77,6 +77,9 @@
                             <h2 class="heading-2" style="margin: 0 0 15px 0; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0e0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 14pt; font-weight: bold; color: #333333;">
                                 {{ topic.name }}
                             </h2>
+                            {% if topic.stats_html %}
+                            {{ topic.stats_html | safe }}
+                            {% endif %}
                             {{ topic.prose_html | safe }}
                         </td>
                     </tr>

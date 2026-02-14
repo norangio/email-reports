@@ -307,6 +307,7 @@ Just the sentence, no preamble."""
         articles: list[Article],
         notable_filings: list[Article] | None = None,
         previous_syntheses: list[DaySynthesis] | None = None,
+        extra_context: str | None = None,
     ) -> TopicSynthesis:
         """
         Synthesize a topic into flowing prose with [N] source references.
@@ -363,9 +364,13 @@ Just the sentence, no preamble."""
                 "to today's new sources\n"
             )
 
+        extra_context_block = ""
+        if extra_context:
+            extra_context_block = f"\n\nAdditional context (not a citable source — use for narrative color):\n{extra_context}\n"
+
         prompt = f"""Here are the sources for the "{topic_name}" section of a daily news brief:
 
-{sources_text}{prev_context}
+{sources_text}{prev_context}{extra_context_block}
 
 Write 3-5 paragraphs synthesizing the key developments and news from these sources. Rules:
 - Reference sources inline as [1], [2], etc.
